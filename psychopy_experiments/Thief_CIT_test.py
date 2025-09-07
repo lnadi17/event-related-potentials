@@ -51,7 +51,7 @@ OUT_CSV = os.path.join(BASE_DIR, f"cit_p300_{datetime.now().strftime('%Y%m%d_%H%
 # -------------
 # Item files
 # -------------
-# Put your 6 image files in ../media and list them here (filenames only).
+# Put your 6 image files in ./media and list them here (filenames only).
 ITEM_FILES = [
     "item_01.jpg",
     "item_02.jpg",
