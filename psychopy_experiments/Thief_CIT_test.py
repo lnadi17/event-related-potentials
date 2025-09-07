@@ -62,8 +62,8 @@ ITEM_FILES = [
 ]
 
 # Choose which is PROBE and which is TARGET (by filename)
-PROBE_FILE = "item_02.jpg"
-TARGET_FILE = "item_06.jpg"
+PROBE_FILE = "item_06.jpg"
+TARGET_FILE = "item_02.jpg"
 
 # Image display size (pixels)
 IMAGE_SIZE = (400, 400)
