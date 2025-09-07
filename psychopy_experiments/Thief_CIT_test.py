@@ -39,6 +39,10 @@ win_size = [1280, 800]
 bg_color = [0.5, 0.5, 0.5]         # grey
 units = 'pix'
 
+# Mouse mapping (PsychoPy returns [left, middle, right])
+LEFT_IDX = 0
+RIGHT_IDX = 2
+
 # Paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MEDIA_DIR = os.path.join(BASE_DIR, 'media')
@@ -47,7 +51,7 @@ OUT_CSV = os.path.join(BASE_DIR, f"cit_p300_{datetime.now().strftime('%Y%m%d_%H%
 # -------------
 # Item files
 # -------------
-# Put your 6 image files in ../media and list them here (filenames only).
+# Put your 6 image files in ./media and list them here (filenames only).
 ITEM_FILES = [
     "item_01.jpg",
     "item_02.jpg",
@@ -58,8 +62,8 @@ ITEM_FILES = [
 ]
 
 # Choose which is PROBE and which is TARGET (by filename)
-PROBE_FILE = "item_02.jpg"
-TARGET_FILE = "item_06.jpg"
+PROBE_FILE = "item_06.jpg"
+TARGET_FILE = "item_02.jpg"
 
 # Image display size (pixels)
 IMAGE_SIZE = (400, 400)
@@ -69,8 +73,8 @@ IMAGE_SIZE = (400, 400)
 # ----------------
 # We’ll use marker codes 1..6 mapped to the 6 items
 info = StreamInfo(name='PsychopyMarkerStream', type='Markers',
-                 channel_count=1, channel_format='int32',
-                 source_id='uniqueid_cit_p300')
+                  channel_count=1, channel_format='int32',
+                  source_id='uniqueid_cit_p300')
 outlet = StreamOutlet(info)
 
 # ---------
@@ -144,9 +148,9 @@ def main():
         win,
         ('Press SPACE to begin.\n\n'
          'You will see items from the same category.\n\n'
-         'RESPONSES (keyboard):\n'
-         '  - RIGHT ARROW for the TARGET item. We will show you the target on the next screen.\n'
-         '  - LEFT ARROW for ALL OTHER items\n\n'
+         'RESPONSES (mouse):\n'
+         '  - RIGHT click for the TARGET item. We will show you the target on the next screen.\n'
+         '  - LEFT click for ALL OTHER items\n\n'
          f'The image will stay up to {STIM_DISPLAY_TIME:.1f}s; try to respond as quickly and accurately as possible.\n'),
         wait_keys=('space',), pos=(0, 0), height=0.045
     )
@@ -195,6 +199,7 @@ def main():
         stim = image_cache[fname]
 
         # Reset per-trial
+        mouse.clickReset()
         kb.clearEvents()
 
         # Pre-trial fixation
@@ -208,26 +213,31 @@ def main():
         win.flip()
         stim_onset = global_clock.getTime()
 
-        # Collect keyboard response within STIM_DISPLAY_TIME
+        # Collect mouse within STIM_DISPLAY_TIME
         responded = False
         resp_button = None  # 'left' or 'right'
         rt_ms = None
 
+        # Keep the stimulus on screen while collecting
         trial_clock.reset()
         while trial_clock.getTime() < STIM_DISPLAY_TIME:
-            keys = kb.getKeys(keyList=['left', 'right'], waitRelease=False)
-            if keys:
-                k = keys[0]
-                if k.name == 'left':
+            # Check clicks
+            buttons, times = mouse.getPressed(getTime=True)
+            if any(buttons):
+                if buttons[LEFT_IDX]:
                     resp_button = 'left'
                     responded = True
                     rt_ms = (global_clock.getTime() - stim_onset) * 1000.0
                     break
-                elif k.name == 'right':
+                elif buttons[RIGHT_IDX]:
                     resp_button = 'right'
                     responded = True
                     rt_ms = (global_clock.getTime() - stim_onset) * 1000.0
                     break
+
+            # Keep showing the image during the response window
+            stim.draw()
+            win.flip()
 
         # After response window, clear screen to fixation to finish trial
         # (ensures total trial = TRIAL_TOTAL_LEN)
