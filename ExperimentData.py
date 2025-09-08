@@ -17,7 +17,7 @@ class ExperimentData:
         # Read data of the first stream
         self.eeg_time = self._xdf_data[0]['time_stamps']
         self._time_offset = min(self.eeg_time)
-        self.eeg_time = self.eeg_time - self._time_offset
+        self.eeg_time = self.eeg_time - self._time_offset - self._delay
         self.eeg_data = self._xdf_data[0]['time_series'][:, :8]
         # self.accelerometer_data = self._xdf_data[0]['time_series'][:, 8:11]
         # self.gyroscope_data = self._xdf_data[0]['time_series'][:, 11:14]
@@ -31,8 +31,9 @@ class ExperimentData:
         self.marker_time = self.marker_time - self._time_offset
         self.marker_data = [x[0] for x in self._xdf_data[1]['time_series']]
 
-    def __init__(self, xdf_path):
+    def __init__(self, xdf_path, delay=0):
         self._xdf_data = pyxdf.load_xdf(xdf_path)[0]
+        self._delay = delay
         assert len(self._xdf_data) == 2, "Expected exactly 2 streams in the XDF file."
         # Ensure first stream is EEG and second is markers
         if self._xdf_data[0]['info']['type'][0] != 'Data':

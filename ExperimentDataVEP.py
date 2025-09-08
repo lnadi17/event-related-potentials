@@ -6,8 +6,8 @@ from ExperimentData import ExperimentData
 
 
 class ExperimentDataVEP(ExperimentData):
-    def __init__(self, xdf_path, min_frequency=0.5, max_frequency=30, tmin=-0.2, tmax=0.5, bad_ch=None):
-        super().__init__(xdf_path)
+    def __init__(self, xdf_path, min_frequency=0.5, max_frequency=30, tmin=-0.2, tmax=0.5, bad_ch=None, delay=0):
+        super().__init__(xdf_path, delay)
         self.tmin = tmin
         self.tmax = tmax
         self._filter_data(min_frequency, max_frequency)
