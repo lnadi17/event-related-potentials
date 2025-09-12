@@ -9,6 +9,7 @@ from psychopy.hardware import keyboard
 import numpy as np
 import random, os, csv
 from datetime import datetime
+from pylsl import StreamInfo, StreamOutlet
 
 # -------------------- Parameters you asked to expose --------------------
 STIM_TIME      = 0.200            # seconds stimulus on-screen
@@ -29,8 +30,19 @@ TITLE   = "Flanker Task (5 arrows)"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUT_CSV  = os.path.join(BASE_DIR, f"flanker_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
 
+# -------------------- LSL --------------------
+info = StreamInfo(name='PsychopyMarkerStream', type='Markers',
+                  channel_count=1, channel_format='int32',
+                  source_id='flankers_ern_lrp_unique')
+outlet = StreamOutlet(info)
+MARKER_STIM_ONSET = 1
+MARKER_RESP = 2
 # -------------------- Utilities --------------------
 logging.console.setLevel(logging.INFO)
+
+def send_marker(win, value):
+    """Send a marker value exactly on next flip."""
+    win.callOnFlip(outlet.push_sample, [int(value)])
 
 def write_text(win, text, pos=(0,0), height=0.045, wrap=1.6, bold=False):
     return visual.TextStim(
@@ -145,6 +157,7 @@ def main():
             # --- Stimulus onset ---
             stim.text = t['stim_str']
             stim.draw()
+            send_marker(win, MARKER_STIM_ONSET)
             win.flip()
             stim_on = core.getTime()
 
@@ -166,6 +179,7 @@ def main():
                     if k == 'leftshift':  k = 'lshift'
                     if k == 'rightshift': k = 'rshift'
                     if k in ('lshift','rshift') and resp_key is None:
+                        send_marker(win, MARKER_RESP)
                         resp_key = k
                         rt = (keys[0].rt) * 1000.0  # ms
                 # keep showing stim
