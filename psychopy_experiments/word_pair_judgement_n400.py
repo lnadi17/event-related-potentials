@@ -13,27 +13,31 @@ from pylsl import StreamInfo, StreamOutlet
 from datetime import datetime
 
 # -------------------- Parameters (edit as needed) --------------------
-PRIME_TIME     = 0.200            # seconds prime on-screen
-TARGET_TIME    = 0.200            # seconds target on-screen (visual persistence; responses continue)
-ISI_INTERVAL   = (0.900, 1.100)   # seconds (min, max) between PRIME off and TARGET on
-RESP_WINDOW    = (1.400, 1.600)   # seconds (min, max) from TARGET onset (responses close after this)
-N_TRIALS       = 120              # total trials (must be even). Each target contributes 2 trials.
+PRIME_TIME = 0.200  # seconds prime on-screen
+TARGET_TIME = 0.200  # seconds target on-screen (visual persistence; responses continue)
+ISI_INTERVAL = (0.900, 1.100)  # seconds (min, max) between PRIME off and TARGET on
+RESP_WINDOW = (1.400, 1.600)  # seconds (min, max) from TARGET onset (responses close after this)
+N_TRIALS = 120  # total trials (must be even). Each target contributes 2 trials.
 
-FULLSCR        = False
-WIN_SIZE       = [1000, 700]
-BG_COLOR       = [1, 1, 1]        # white background
-FONT_NAME      = 'DejaVu Sans'
-TITLE          = "Semantic Relatedness Judgment"
-BASE_DIR       = os.path.dirname(os.path.abspath(__file__))
-OUT_CSV        = os.path.join(BASE_DIR, f"semrel_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
+FULLSCR = False
+WIN_SIZE = [1000, 700]
+BG_COLOR = [1, 1, 1]  # white background
+FONT_NAME = 'DejaVu Sans'
+TITLE = "Semantic Relatedness Judgment"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUT_CSV = os.path.join(BASE_DIR, f"semrel_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
 
-COLOR_PRIME    = 'red'
-COLOR_TARGET   = 'green'
-KEY_RELATED    = 'right'          # right arrow key
-KEY_UNRELATED  = 'left'           # left arrow key
+COLOR_PRIME = 'red'
+COLOR_TARGET = 'green'
+KEY_RELATED = 'right'  # right arrow key
+KEY_UNRELATED = 'left'  # left arrow key
+
+# Markers
+TARGET_STIM_ONSET_MARKER = 1
+RESP_KEY_MARKER = 2
 
 # Optional: small ITI after response/timeout (set to 0 to disable)
-ITI_SECONDS    = 0.0
+ITI_SECONDS = 0.0
 
 # -------------------- Word lists --------------------
 list1 = [
@@ -286,15 +290,22 @@ list4 = [
     ("king", "crown", "brush"),
 ]
 
-
 ALL_LISTS = [list1, list2, list3, list4]
+
+# -------------------- LSL --------------------
+info = StreamInfo(name='PsychopyMarkerStream', type='Markers',
+                  channel_count=1, channel_format='int32',
+                  source_id='word_pair_judgement_n400_unique')
+outlet = StreamOutlet(info)
 
 # -------------------- Utilities --------------------
 logging.console.setLevel(logging.INFO)
 
+
 def send_marker(win, value):
     """Send a marker value exactly on next flip."""
     win.callOnFlip(outlet.push_sample, [int(value)])
+
 
 def write_text(win, text, pos=(0, 0), height=0.045, wrap=1.6, bold=False):
     return visual.TextStim(
@@ -379,8 +390,8 @@ def main():
         f"{TITLE}\n\n"
         f"Red word (prime) → green word (target).\n"
         f"RIGHT arrow if RELATED, LEFT arrow if UNRELATED.\n\n"
-        f"Prime {int(PRIME_TIME*1000)} ms, ISI {int(ISI_INTERVAL[0]*1000)}–{int(ISI_INTERVAL[1]*1000)} ms,\n"
-        f"Target {int(TARGET_TIME*1000)} ms, Response window {int(RESP_WINDOW[0]*1000)}–{int(RESP_WINDOW[1]*1000)} ms.\n\n"
+        f"Prime {int(PRIME_TIME * 1000)} ms, ISI {int(ISI_INTERVAL[0] * 1000)}–{int(ISI_INTERVAL[1] * 1000)} ms,\n"
+        f"Target {int(TARGET_TIME * 1000)} ms, Response window {int(RESP_WINDOW[0] * 1000)}–{int(RESP_WINDOW[1] * 1000)} ms.\n\n"
         f"Press SPACE to begin."
     )
 
@@ -410,7 +421,7 @@ def main():
             # create a synthetic duplicate target by tagging it (keeps independence of two halves)
             src = random.choice(pool)
             # Clone trials but keep the same words (this introduces repeats in the session)
-            new_key = f"{src}#dup{random.randint(1000,9999)}"
+            new_key = f"{src}#dup{random.randint(1000, 9999)}"
             trials_per_target[new_key] = [
                 dict(**trials_per_target[src][0]),
                 dict(**trials_per_target[src][1]),
@@ -425,11 +436,14 @@ def main():
         trial_list = trial_list[:-1]
 
     # ---- Instructions ----
-    instr.draw(); win.flip()
-    kb.clearEvents(); event.clearEvents()
+    instr.draw();
+    win.flip()
+    kb.clearEvents();
+    event.clearEvents()
     kb.waitKeys(keyList=['space', 'escape'])
     if any(k.name == 'escape' for k in kb.getKeys(waitRelease=False)):
-        win.close(); core.quit()
+        win.close();
+        core.quit()
 
     # ---- CSV header ----
     with open(OUT_CSV, "w", newline="", encoding="utf-8") as fh:
@@ -446,17 +460,20 @@ def main():
         prime_stim.text = t['prime']
         prime_stim.color = COLOR_PRIME
         prime_on = core.getTime()
-        kb.clearEvents(); event.clearEvents()
+        kb.clearEvents();
+        event.clearEvents()
 
         # Show prime for PRIME_TIME
         while (core.getTime() - prime_on) < PRIME_TIME:
-            prime_stim.draw(); win.flip()
+            prime_stim.draw();
+            win.flip()
 
         # ISI (blank + fixation). No responses during ISI.
         isi = random.uniform(*ISI_INTERVAL)
         isi_start = core.getTime()
         while (core.getTime() - isi_start) < isi:
-            fixation.draw(); win.flip()
+            fixation.draw();
+            win.flip()
 
         # TARGET
         target_stim.text = t['target']
@@ -467,11 +484,15 @@ def main():
         rt_ms = None
         correct = 0
 
+        marker_sent = False
         # Show target for TARGET_TIME; responses accepted immediately and continue until resp_deadline
         while core.getTime() < resp_deadline:
             elapsed = core.getTime() - target_on
             if elapsed < TARGET_TIME:
                 target_stim.draw()
+                if not marker_sent:
+                    send_marker(win, TARGET_STIM_ONSET_MARKER)
+                    marker_sent = True
             else:
                 # after target offset, keep fixation
                 fixation.draw()
@@ -481,8 +502,10 @@ def main():
             if keys:
                 k = keys[0].name
                 if k == 'escape':
-                    win.close(); core.quit()
+                    win.close();
+                    core.quit()
                 if resp_key is None and k in (KEY_RELATED, KEY_UNRELATED):
+                    send_marker(win, RESP_KEY_MARKER)
                     resp_key = k
                     rt_ms = (core.getTime() - target_on) * 1000.0
                     correct = int(resp_key == t['correct_key'])
@@ -496,7 +519,8 @@ def main():
         if ITI_SECONDS > 0:
             iti_start = core.getTime()
             while (core.getTime() - iti_start) < ITI_SECONDS:
-                fixation.draw(); win.flip()
+                fixation.draw();
+                win.flip()
 
         # Log
         with open(OUT_CSV, "a", newline="", encoding="utf-8") as fh:
@@ -515,7 +539,8 @@ def main():
         f"Session complete.\n\nTrials: {len(trial_list)}\nData saved to:\n{os.path.basename(OUT_CSV)}\n\nPress ENTER to exit.",
         height=0.05
     )
-    end.draw(); win.flip()
+    end.draw();
+    win.flip()
 
     kb.clearEvents()
     while True:
@@ -524,7 +549,8 @@ def main():
             break
         core.wait(0.01)
 
-    win.close(); core.quit()
+    win.close();
+    core.quit()
 
 
 if __name__ == "__main__":
