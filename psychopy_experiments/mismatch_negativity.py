@@ -1,7 +1,7 @@
 from psychopy import visual, core, event, logging, sound
 from psychopy.visual import Window
 from psychopy.hardware import keyboard
-# from pylsl import StreamInfo, StreamOutlet
+from pylsl import StreamInfo, StreamOutlet
 import numpy as np
 import random
 import os
@@ -42,10 +42,10 @@ MARK_STANDARD = 1
 MARK_DEVIANT = 2
 
 # -------------------- LSL --------------------
-# info = StreamInfo(name='PsychopyMarkerStream', type='Markers',
-#                   channel_count=1, channel_format='int32',
-#                   source_id='mmn_oddball_unique')
-# outlet = StreamOutlet(info)
+info = StreamInfo(name='PsychopyMarkerStream', type='Markers',
+                  channel_count=1, channel_format='int32',
+                  source_id='mmn_oddball_unique')
+outlet = StreamOutlet(info)
 
 def get_native_video_size(path):
     # Try OpenCV first (most reliable)
@@ -78,9 +78,7 @@ def get_native_video_size(path):
     
 def send_marker(win, value):
     """Send a marker value exactly on next flip."""
-    # TODO
-    # win.callOnFlip(outlet.push_sample, [int(value)])
-    pass
+    win.callOnFlip(outlet.push_sample, [int(value)])
 
 # -------------------- Logging --------------------
 logging.console.setLevel(logging.INFO)
