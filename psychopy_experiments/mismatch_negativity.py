@@ -1,9 +1,7 @@
-# MMN Oddball (single deviant) with PsychoPy + LSL
-# Style-matched to your visual oddball template.
 from psychopy import visual, core, event, logging, sound
 from psychopy.visual import Window
 from psychopy.hardware import keyboard
-from pylsl import StreamInfo, StreamOutlet
+# from pylsl import StreamInfo, StreamOutlet
 import numpy as np
 import random
 import os
@@ -13,24 +11,25 @@ import cv2
 
 # -------------------- Config --------------------
 TITLE = "MMN Oddball (single deviant)"
-SOA = 0.500                 # 500 ms onset-to-onset
-TONE_DUR = 0.075            # 75 ms tone
-RAMP_MS = 5                 # 5 ms linear ramps
-DEV_PROB = 0.10             # deviant probability after initial standards
-INIT_STANDARDS = 15         # first tones of each block forced to standards
-N_BLOCKS = 3                # three 5-minute sequences
-BLOCK_LEN_S = 5 * 60        # 5 minutes per block
+ISI_INTERVAL_MIN = 0.450  # 450 ms
+ISI_INTERVAL_MAX = 0.550  # 550 ms
+TONE_DUR = 0.100          # 100 ms tone
+RAMP_MS = 5               # 5 ms linear ramps
+DEV_PROB = 0.20           # deviant probability after initial standards
+INIT_STANDARDS = 10       # first tones of each block forced to standards
+N_BLOCKS = 3              # three 5-minute sequences
+BLOCK_LEN_S = 5 * 60      # 5 minutes per block
 
 # PsychoPy window settings (same style)
 fullscr = False
-win_size = [1280, 800]
+win_size = [800, 600]
 bg_color = [0.5, 0.5, 0.5]  # grey
 
 # Media (under psychopy-experiments/media)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MEDIA_DIR = os.path.join(BASE_DIR, 'media')
 VIDEO_FILE = os.path.join(MEDIA_DIR, 'draw.mp4')  # optional; muted
-VIDEO_SCALE = 0.5
+VIDEO_SCALE = 0.2
 # Output
 OUT_CSV = os.path.join(BASE_DIR, f"mmn_oddball_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
 
@@ -43,10 +42,10 @@ MARK_STANDARD = 1
 MARK_DEVIANT = 2
 
 # -------------------- LSL --------------------
-info = StreamInfo(name='PsychopyMarkerStream', type='Markers',
-                  channel_count=1, channel_format='int32',
-                  source_id='mmn_oddball_unique')
-outlet = StreamOutlet(info)
+# info = StreamInfo(name='PsychopyMarkerStream', type='Markers',
+#                   channel_count=1, channel_format='int32',
+#                   source_id='mmn_oddball_unique')
+# outlet = StreamOutlet(info)
 
 def get_native_video_size(path):
     # Try OpenCV first (most reliable)
@@ -79,7 +78,9 @@ def get_native_video_size(path):
     
 def send_marker(win, value):
     """Send a marker value exactly on next flip."""
-    win.callOnFlip(outlet.push_sample, [int(value)])
+    # TODO
+    # win.callOnFlip(outlet.push_sample, [int(value)])
+    pass
 
 # -------------------- Logging --------------------
 logging.console.setLevel(logging.INFO)
@@ -165,7 +166,7 @@ def main():
     with open(OUT_CSV, "w", newline="", encoding="utf-8") as fh:
         writer = csv.writer(fh)
         writer.writerow(["timestamp_iso","block","trial","marker","is_deviant",
-                         "soa_s","tone_dur_s","std_partials_hz","dev_partials_hz"])
+                         "isi_s","tone_dur_s","std_partials_hz","dev_partials_hz"])
 
     # Blocks
     for block in range(1, N_BLOCKS + 1):
@@ -193,7 +194,7 @@ def main():
             send_marker(win, MARK_DEVIANT if is_dev else MARK_STANDARD)
             win.flip()
 
-            # Play tone (75 ms)
+            # Play tone
             if is_dev:
                 dev_tone.play()
                 marker = MARK_DEVIANT
@@ -203,10 +204,9 @@ def main():
 
             core.wait(TONE_DUR)
 
-            # Keep video updating to complete SOA
-            remaining = max(0.0, SOA - TONE_DUR)
+            isi = random.uniform(ISI_INTERVAL_MIN, ISI_INTERVAL_MAX)
             t0 = core.getTime()
-            while (core.getTime() - t0) < remaining:
+            while (core.getTime() - t0) < isi:
                 if movie:
                     movie.draw()
                 win.flip()
@@ -217,7 +217,7 @@ def main():
                 writer.writerow([
                     datetime.now().isoformat(timespec='milliseconds'),
                     block, trial, marker, int(is_dev),
-                    SOA, TONE_DUR,
+                    isi, TONE_DUR,
                     ";".join(map(lambda x: str(int(x)), F_STD_PARTIALS)),
                     ";".join(map(lambda x: str(int(x)), F_DEV_PARTIALS))
                 ])
