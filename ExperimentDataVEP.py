@@ -6,8 +6,8 @@ from ExperimentData import ExperimentData
 
 
 class ExperimentDataVEP(ExperimentData):
-    def __init__(self, xdf_path, min_frequency=0.5, max_frequency=30, tmin=-0.2, tmax=0.5, bad_ch=None):
-        super().__init__(xdf_path)
+    def __init__(self, xdf_path, min_frequency=0.5, max_frequency=30, tmin=-0.2, tmax=0.5, bad_ch=None, delay=0):
+        super().__init__(xdf_path, delay)
         self.tmin = tmin
         self.tmax = tmax
         self._filter_data(min_frequency, max_frequency)
@@ -19,24 +19,12 @@ class ExperimentDataVEP(ExperimentData):
             self._filter_markers()
 
     def _filter_markers(self):
-        # Remove markers that aren't in our interest
-        print(self.marker_data)
         events = []
-        # for i, marker in enumerate(self.marker_data):
-        #     if marker in ['oddball', 'standard'] and self.marker_data[i + 1] == 'trial-end':
-        #         eeg_start_index = np.argmax(self.eeg_time >= self.marker_time[
-        #             i]) - 1  # Max timestamp that is less than current marker time (trial-begin)
-        #         events.append([eeg_start_index, 0, 1 if marker == 'standard' else 2])
         for i, marker in enumerate(self.marker_data):
             eeg_start_index = np.argmax(self.eeg_time >= self.marker_time[i]) - 1
-            events.append([eeg_start_index, 0, 1])
+            events.append([eeg_start_index, 0, marker])
         events = np.array(events)
-        # TODO: Remove this
-        # Shift all events by 300 ms to account for the delay
-        # events[:, 0] += int(0.3 * self._raw.info['sfreq'])
-        # print(events.shape)
-        # event_dict = dict(standard=1, oddball=2)
-        event_dict = dict(standard=1)
+        event_dict = dict(standard=1, oddball=2)
         self._epochs = mne.Epochs(self._raw, events, event_id=event_dict, tmin=self.tmin, tmax=self.tmax, preload=True,
                                   baseline=(None, 0 if self.tmin < 0 else None))
 
@@ -122,6 +110,6 @@ class ExperimentDataVEP(ExperimentData):
     def plot_compare_conditions(self, confidence_interval=0.95, picks=None):
         evokeds = dict(
             standard=list(self._epochs["standard"].iter_evoked()),
-            # oddball=list(self._epochs["oddball"].iter_evoked()),
+            oddball=list(self._epochs["oddball"].iter_evoked()),
         )
         mne.viz.plot_compare_evokeds(evokeds, combine="mean", ci=confidence_interval, picks=picks)
