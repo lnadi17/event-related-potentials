@@ -52,7 +52,7 @@ logging.console.setLevel(logging.INFO)
 
 def send_marker(win, value):
     """Send a marker value exactly on next flip."""
-   win.callOnFlip(outlet.push_sample, [int(value)])
+    win.callOnFlip(outlet.push_sample, [int(value)])
 
 
 def write_text(win, text, pos=(0, 0), height=0.045, wrap=1.6, bold=False):
