@@ -9,8 +9,9 @@ from psychopy import visual, core, event, logging
 from psychopy.hardware import keyboard
 import numpy as np
 import random, os, csv
-from pylsl import StreamInfo, StreamOutlet
+#from pylsl import StreamInfo, StreamOutlet
 from datetime import datetime
+from wordlist import wordlist
 
 # -------------------- Parameters (edit as needed) --------------------
 PRIME_TIME = 0.200  # seconds prime on-screen
@@ -38,259 +39,6 @@ RESP_KEY_MARKER = 2
 
 # Optional: small ITI after response/timeout (set to 0 to disable)
 ITI_SECONDS = 0.0
-
-# -------------------- Word lists --------------------
-list1 = [
-    ("bottom", "top", "aunt"),
-    ("wag", "tail", "piano"),
-    ("color", "red", "bread"),
-    ("tiny", "small", "truck"),
-    ("skirt", "dress", "horse"),
-    ("sing", "song", "ruler"),
-    ("one", "two", "glass"),
-    ("jam", "jelly", "shoe"),
-    ("hunger", "thirst", "bell"),
-    ("table", "chair", "sun"),
-    ("key", "lock", "brush"),
-    ("half", "whole", "string"),
-    ("calf", "cow", "drum"),
-    ("snake", "serpent", "chair"),
-    ("doctor", "nurse", "chair"),
-    ("cup", "glass", "horse"),
-    ("open", "close", "bell"),
-    ("dime", "coin", "chair"),
-    ("soda", "drink", "chain"),
-    ("minus", "plus", "door"),
-    ("rent", "rent", "horse"),
-    ("duck", "duck", "stone"),
-    ("silk", "cloth", "fork"),
-    ("needle", "thread", "coin"),
-    ("eagle", "hawk", "fork"),
-    ("early", "late", "pot"),
-    ("even", "odd", "leaf"),
-    ("knit", "sew", "string"),
-    ("fence", "gate", "plate"),
-    ("flower", "rose", "fork"),
-    ("magic", "trick", "stone"),
-    ("scissor", "cut", "horn"),
-    ("quiet", "loud", "rug"),
-    ("silver", "gold", "chair"),
-    ("river", "stream", "cup"),
-    ("father", "son", "roof"),
-    ("bronze", "brown", "coin"),
-    ("cap", "hat", "horn"),
-    ("cub", "bear", "clock"),
-    ("comb", "hair", "cloud"),
-    ("lion", "tiger", "clock"),
-    ("storm", "rain", "book"),
-    ("apple", "pear", "coin"),
-    ("wolf", "fox", "horn"),
-    ("train", "track", "rug"),
-    ("coin", "cash", "broom"),
-    ("bride", "groom", "clock"),
-    ("rain", "umbrella", "gun"),
-    ("horse", "saddle", "lamp"),
-    ("desk", "book", "coin"),
-    ("stone", "rock", "table"),
-    ("clock", "time", "chain"),
-    ("leaf", "tree", "ladder"),
-    ("sun", "day", "string"),
-    ("cat", "paw", "brick"),
-    ("chair", "sit", "brush"),
-    ("shark", "fish", "coat"),
-    ("bridge", "river", "bowl"),
-    ("plane", "fly", "pot"),
-    ("star", "planet", "bell"),
-]
-
-list2 = [
-    ("assist", "help", "frog"),
-    ("kind", "mean", "lamp"),
-    ("ocean", "sea", "chair"),
-    ("win", "lose", "river"),
-    ("kitten", "cat", "ladder"),
-    ("hammer", "nail", "leaf"),
-    ("month", "year", "pencil"),
-    ("beer", "wine", "cloud"),
-    ("old", "new", "broom"),
-    ("knife", "cut", "cloud"),
-    ("insect", "bug", "coat"),
-    ("inch", "foot", "paper"),
-    ("true", "false", "chain"),
-    ("time", "clock", "leaf"),
-    ("spend", "save", "mountain"),
-    ("shoe", "sock", "fork"),
-    ("war", "peace", "coin"),
-    ("live", "die", "cloud"),
-    ("king", "queen", "brick"),
-    ("hide", "seek", "clock"),
-    ("sad", "cry", "bell"),
-    ("long", "short", "bowl"),
-    ("alive", "dead", "stick"),
-    ("blanket", "sheet", "stone"),
-    ("gem", "stone", "chair"),
-    ("puppy", "dog", "cloud"),
-    ("curtain", "cover", "cup"),
-    ("arm", "leg", "stone"),
-    ("empty", "full", "brick"),
-    ("hard", "soft", "chain"),
-    ("mud", "dirt", "fan"),
-    ("woman", "man", "bridge"),
-    ("many", "few", "fence"),
-    ("car", "car", "string"),
-    ("future", "past", "bell"),
-    ("glove", "glove", "stone"),
-    ("begin", "end", "cup"),
-    ("dim", "bright", "fence"),
-    ("smart", "wise", "stone"),
-    ("sting", "hurt", "roof"),
-    ("cup", "mug", "stone"),
-    ("hill", "mountain", "lamp"),
-    ("strong", "weak", "brush"),
-    ("sand", "desert", "clock"),
-    ("high", "low", "pencil"),
-    ("root", "tree", "bridge"),
-    ("pen", "paper", "brush"),
-    ("deep", "shallow", "rug"),
-    ("fast", "slow", "bowl"),
-    ("big", "small", "fan"),
-    ("fire", "ash", "pencil"),
-    ("light", "shadow", "cup"),
-    ("full", "empty", "horn"),
-    ("rich", "wealthy", "lamp"),
-    ("hard", "rock", "plate"),
-    ("cold", "freeze", "chain"),
-    ("clear", "cloudy", "clock"),
-    ("night", "day", "stone"),
-    ("ice", "snow", "ladder"),
-    ("short", "long", "pencil"),
-]
-
-list3 = [
-    ("eat", "drink", "cloud"),
-    ("shirt", "pants", "bridge"),
-    ("money", "bank", "fence"),
-    ("sleep", "dream", "coin"),
-    ("wild", "tame", "door"),
-    ("sick", "well", "planet"),
-    ("snow", "rain", "bridge"),
-    ("heaven", "hell", "stone"),
-    ("razor", "shave", "leaf"),
-    ("angry", "mad", "floor"),
-    ("fresh", "stale", "bone"),
-    ("gun", "shoot", "wall"),
-    ("scratch", "itch", "plate"),
-    ("dirty", "clean", "piano"),
-    ("cart", "cart", "lamp"),
-    ("dinner", "lunch", "stone"),
-    ("robin", "bird", "spoon"),
-    ("kill", "kill", "roof"),
-    ("circle", "square", "coat"),
-    ("shovel", "spade", "bird"),
-    ("her", "him", "candle"),
-    ("hop", "skip", "wall"),
-    ("stove", "cook", "brush"),
-    ("mom", "dad", "lamp"),
-    ("wet", "dry", "horn"),
-    ("teach", "learn", "chain"),
-    ("jog", "run", "bread"),
-    ("rip", "tear", "fork"),
-    ("read", "write", "coin"),
-    ("pig", "pig", "candle"),
-    ("pea", "bean", "cup"),
-    ("black", "white", "cup"),
-    ("taste", "smell", "fork"),
-    ("once", "twice", "cloud"),
-    ("big", "large", "brush"),
-    ("lake", "pond", "string"),
-    ("rug", "mat", "chair"),
-    ("more", "less", "lamp"),
-    ("fish", "swim", "candle"),
-    ("fat", "thin", "plate"),
-    ("cloud", "sky", "pencil"),
-    ("cry", "tear", "chain"),
-    ("page", "book", "rug"),
-    ("soap", "wash", "bell"),
-    ("chess", "board", "stone"),
-    ("jump", "leap", "fan"),
-    ("lip", "mouth", "stone"),
-    ("star", "galaxy", "horn"),
-    ("hat", "head", "stone"),
-    ("bird", "nest", "plate"),
-    ("fish", "hook", "string"),
-    ("cheese", "bread", "chain"),
-    ("foot", "shoe", "clock"),
-    ("grass", "green", "rug"),
-    ("ball", "game", "table"),
-    ("word", "speech", "brush"),
-    ("string", "guitar", "cup"),
-    ("bread", "oven", "clock"),
-    ("path", "road", "chain"),
-]
-
-list4 = [
-    ("uncle", "aunt", "brick"),
-    ("up", "down", "candle"),
-    ("bread", "eggs", "clock"),
-    ("ice", "cold", "table"),
-    ("bread", "butter", "cloud"),
-    ("mold", "mold", "candle"),
-    ("push", "pull", "cup"),
-    ("meat", "beef", "fork"),
-    ("moon", "star", "wall"),
-    ("pepper", "salt", "chain"),
-    ("narrow", "wide", "cloud"),
-    ("fail", "pass", "candle"),
-    ("best", "worst", "door"),
-    ("start", "stop", "fork"),
-    ("hug", "kiss", "string"),
-    ("ship", "boat", "bread"),
-    ("mix", "stir", "candle"),
-    ("sheep", "sheep", "string"),
-    ("ink", "pen", "table"),
-    ("coffee", "tea", "bridge"),
-    ("good", "bad", "roof"),
-    ("fast", "slow", "piano"),
-    ("no", "yes", "brick"),
-    ("spice", "herb", "fence"),
-    ("rock", "stone", "candle"),
-    ("pots", "pans", "brick"),
-    ("rich", "poor", "hat"),
-    ("near", "far", "clock"),
-    ("lost", "found", "horn"),
-    ("home", "house", "leaf"),
-    ("small", "short", "lamp"),
-    ("frown", "smile", "coin"),
-    ("hands", "feet", "stone"),
-    ("float", "sink", "lamp"),
-    ("flame", "fire", "clock"),
-    ("first", "last", "leaf"),
-    ("eyes", "nose", "brick"),
-    ("sit", "stand", "cup"),
-    ("hot", "warm", "chain"),
-    ("step", "stair", "brush"),
-    ("left", "right", "horn"),
-    ("sweet", "sour", "table"),
-    ("hot", "cold", "fence"),
-    ("ear", "eye", "string"),
-    ("salt", "water", "cup"),
-    ("earth", "moon", "brick"),
-    ("true", "lie", "coat"),
-    ("open", "shut", "chain"),
-    ("old", "young", "brick"),
-    ("high", "tall", "cup"),
-    ("yes", "no", "brush"),
-    ("sing", "dance", "plate"),
-    ("lost", "win", "stone"),
-    ("black", "night", "pencil"),
-    ("thick", "thin", "fork"),
-    ("friend", "enemy", "fan"),
-    ("love", "hate", "chain"),
-    ("up", "high", "roof"),
-    ("king", "crown", "brush"),
-]
-
-ALL_LISTS = [list1, list2, list3, list4]
 
 # -------------------- LSL --------------------
 info = StreamInfo(name='PsychopyMarkerStream', type='Markers',
@@ -329,30 +77,6 @@ def build_trial_dicts(items):
             dict(prime=unrel, target=tgt, condition='unrelated', correct_key=KEY_UNRELATED),
         ]
     return trials_per_target
-
-
-def merge_until_sufficient(initial_idx, desired_trials):
-    """
-    Start from a random base list index, then merge additional lists until we can
-    support desired_trials (remember 2 trials per unique target).
-    Returns the merged list of unique (rel, tgt, unrel) triples (dedup by target).
-    """
-    order = list(range(len(ALL_LISTS)))
-    # rotate so that chosen index goes first, then the rest
-    order = order[initial_idx:] + order[:initial_idx]
-
-    merged = {}
-    for idx in order:
-        for (rel, tgt, unrel) in ALL_LISTS[idx]:
-            # prefer first occurrence of a target
-            if tgt not in merged:
-                merged[tgt] = (rel, unrel)
-        if desired_trials <= 2 * len(merged):
-            break
-
-    # If still not enough, we will allow sampling with replacement later
-    merged_items = [(rel, tgt, unrel) for tgt, (rel, unrel) in merged.items()]
-    return merged_items
 
 
 def allocate_two_halves(trials_per_target, n_targets_needed):
@@ -399,41 +123,21 @@ def main():
     target_stim = visual.TextStim(win, text='', height=60, color=COLOR_TARGET, font=FONT_NAME)
     fixation = visual.TextStim(win, text='+', height=40, color='black')
 
-    # ---- Choose base list randomly ----
-    base_idx = random.randrange(len(ALL_LISTS))
-    merged_items = merge_until_sufficient(base_idx, N_TRIALS)
-
     # Build trial dicts per target
-    trials_per_target = build_trial_dicts(merged_items)
+    trials_per_target = build_trial_dicts(wordlist)
 
     # Determine how many targets we can/should use
     max_targets = len(trials_per_target)
     needed_targets = N_TRIALS // 2
 
-    if needed_targets > max_targets:
-        logging.warn(
-            f"Requested {N_TRIALS} trials needs {needed_targets} unique targets, "
-            f"but only {max_targets} available after merging. Sampling with replacement."
-        )
-        # Duplicate-randomly pick targets to pad up to needed_targets
-        pool = list(trials_per_target.keys())
-        while len(trials_per_target) < needed_targets:
-            # create a synthetic duplicate target by tagging it (keeps independence of two halves)
-            src = random.choice(pool)
-            # Clone trials but keep the same words (this introduces repeats in the session)
-            new_key = f"{src}#dup{random.randint(1000, 9999)}"
-            trials_per_target[new_key] = [
-                dict(**trials_per_target[src][0]),
-                dict(**trials_per_target[src][1]),
-            ]
-        max_targets = len(trials_per_target)
+    new_targets = [tgt for tgt in list(trials_per_target.keys())[:max_targets]]
+    trials_per_target = {tgt: trials_per_target[tgt] for tgt in new_targets}
 
     # Allocate trials respecting half constraint
     trial_list = allocate_two_halves(trials_per_target, needed_targets)
 
     # Safety: enforce even count
-    if len(trial_list) % 2 != 0:
-        trial_list = trial_list[:-1]
+    assert len(trial_list) % 2 == 0
 
     # ---- Instructions ----
     instr.draw();
