@@ -11,7 +11,7 @@ import numpy as np
 import random, os, csv
 from pylsl import StreamInfo, StreamOutlet
 from datetime import datetime
-from wordlist import wordlist
+from wordlist import wordlist as WORDLIST
 
 # -------------------- Parameters (edit as needed) --------------------
 PRIME_TIME = 0.200  # seconds prime on-screen
@@ -42,8 +42,8 @@ ITI_SECONDS = 0.0
 
 # -------------------- LSL --------------------
 info = StreamInfo(name='PsychopyMarkerStream', type='Markers',
-                  channel_count=1, channel_format='int32',
-                  source_id='word_pair_judgement_n400_unique')
+                 channel_count=1, channel_format='int32',
+                 source_id='word_pair_judgement_n400_unique')
 outlet = StreamOutlet(info)
 
 # -------------------- Utilities --------------------
@@ -52,7 +52,7 @@ logging.console.setLevel(logging.INFO)
 
 def send_marker(win, value):
     """Send a marker value exactly on next flip."""
-    win.callOnFlip(outlet.push_sample, [int(value)])
+   win.callOnFlip(outlet.push_sample, [int(value)])
 
 
 def write_text(win, text, pos=(0, 0), height=0.045, wrap=1.6, bold=False):
@@ -124,10 +124,10 @@ def main():
     fixation = visual.TextStim(win, text='+', height=40, color='black')
 
     # Determine how many targets we can/should use
-    max_targets = len(wordlist)
+    max_targets = len(WORDLIST)
     needed_targets = N_TRIALS // 2
     
-    wordlist = wordlist[:needed_targets]  # Limit wordlist to needed targets
+    wordlist = WORDLIST[:needed_targets]  # Limit wordlist to needed targets
     
     # Build trial dicts per target
     trials_per_target = build_trial_dicts(wordlist)
