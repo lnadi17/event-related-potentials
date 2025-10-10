@@ -123,15 +123,14 @@ def main():
     target_stim = visual.TextStim(win, text='', height=60, color=COLOR_TARGET, font=FONT_NAME)
     fixation = visual.TextStim(win, text='+', height=40, color='black')
 
-    # Build trial dicts per target
-    trials_per_target = build_trial_dicts(wordlist)
-
     # Determine how many targets we can/should use
     max_targets = len(trials_per_target)
     needed_targets = N_TRIALS // 2
-
-    new_targets = [tgt for tgt in list(trials_per_target.keys())[:max_targets]]
-    trials_per_target = {tgt: trials_per_target[tgt] for tgt in new_targets}
+    
+    wordlist = wordlist[:needed_targets]  # Limit wordlist to needed targets
+    
+    # Build trial dicts per target
+    trials_per_target = build_trial_dicts(wordlist)
 
     # Allocate trials respecting half constraint
     trial_list = allocate_two_halves(trials_per_target, needed_targets)
