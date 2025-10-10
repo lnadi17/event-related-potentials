@@ -9,7 +9,7 @@ from psychopy import visual, core, event, logging
 from psychopy.hardware import keyboard
 import numpy as np
 import random, os, csv
-#from pylsl import StreamInfo, StreamOutlet
+from pylsl import StreamInfo, StreamOutlet
 from datetime import datetime
 from wordlist import wordlist
 
