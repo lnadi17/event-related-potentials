@@ -124,7 +124,7 @@ def main():
     fixation = visual.TextStim(win, text='+', height=40, color='black')
 
     # Determine how many targets we can/should use
-    max_targets = len(trials_per_target)
+    max_targets = len(wordlist)
     needed_targets = N_TRIALS // 2
     
     wordlist = wordlist[:needed_targets]  # Limit wordlist to needed targets
