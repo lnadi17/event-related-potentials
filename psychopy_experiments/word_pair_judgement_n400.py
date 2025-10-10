@@ -158,7 +158,7 @@ def main():
         ])
 
     # ---- Trial loop ----
-    for t_idx, t in enumerate(trial_list, start=1):
+    for t_idx, t in enumerate(trial_list):
         # PRIME
         prime_stim.text = t['prime']
         prime_stim.color = COLOR_PRIME
