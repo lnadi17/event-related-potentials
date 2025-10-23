@@ -85,7 +85,7 @@ def gen_block_trials(block_size):
     for _ in range(n_cong_right):
         c = '>'
         s = build(c, True)
-        trials.append(dict(stim_str=s, center=c, congruent=True, correct_key='rshift'))
+        trials.append(dict(stim_str=s, center=c, congruent=True, correct_key='slash'))
     # incongruent-left (center '<', flankers '>')
     for _ in range(n_incong_left):
         c = '<'
@@ -95,7 +95,7 @@ def gen_block_trials(block_size):
     for _ in range(n_incong_right):
         c = '>'
         s = build(c, False)
-        trials.append(dict(stim_str=s, center=c, congruent=False, correct_key='rshift'))
+        trials.append(dict(stim_str=s, center=c, congruent=False, correct_key='slash'))
 
     random.shuffle(trials)
     return trials
@@ -170,15 +170,15 @@ def main():
             kb.clearEvents()
             while (core.getTime() - stim_on) < STIM_TIME:
                 # check keys without blocking
-                keys = kb.getKeys(keyList=['lshift','rshift','leftshift','rightshift','escape'], waitRelease=False)
+                keys = kb.getKeys(keyList=['lshift','slash','leftshift','escape'], waitRelease=False)
                 if keys:
                     k = keys[0].name
                     if k == 'escape':
                         win.close(); core.quit()
                     # normalize aliases
                     if k == 'leftshift':  k = 'lshift'
-                    if k == 'rightshift': k = 'rshift'
-                    if k in ('lshift','rshift') and resp_key is None:
+                    # if k == 'slash': k = 'slash'
+                    if k in ('lshift','slash') and resp_key is None:
                         send_marker(win, MARKER_RESP)
                         resp_key = k
                         rt = (keys[0].rt) * 1000.0  # ms
@@ -192,14 +192,15 @@ def main():
             while (core.getTime() - post_start) < post_isi and resp_key is None:
                 fixation.draw()
                 win.flip()
-                keys = kb.getKeys(keyList=['lshift','rshift','leftshift','rightshift','escape'], waitRelease=False)
+                keys = kb.getKeys(keyList=['lshift','slash','leftshift','escape'], waitRelease=False)
                 if keys:
                     k = keys[0].name
                     if k == 'escape':
                         win.close(); core.quit()
                     if k == 'leftshift':  k = 'lshift'
-                    if k == 'rightshift': k = 'rshift'
-                    if k in ('lshift','rshift'):
+                    # if k == 'rightshift': k = 'rshift'
+                    if k in ('lshift','slash'):
+                        send_marker(win, MARKER_RESP)
                         resp_key = k
                         # RT from stim onset
                         rt = (core.getTime() - stim_on) * 1000.0
