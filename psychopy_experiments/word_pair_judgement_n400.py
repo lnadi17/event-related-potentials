@@ -1,247 +1,250 @@
 # -*- coding: utf-8 -*-
 """
-N170 (Faces vs Cars; Intact vs Scrambled) — PsychoPy + LSL
-
-Task: Press RIGHT for INTACT (faces, cars), LEFT for SCRAMBLED (scrambled faces, scrambled cars).
-Each image shown once, 300 ms, with a blank ISI of 1100–1300 ms.
-Per-image event codes (per ERP CORE):
-  Faces:            1–40
-  Cars:            41–80
-  Scrambled Faces: 101–140
-  Scrambled Cars:  141–180
-Response markers:
-  Correct:  201
-  Incorrect:202
-Materials expected in: ./media/N170/
-Filenames (examples): face_1.jpg, face_2.jpg, ..., car_1.jpg, ...
-Optional (if provided): scrambled_face_1.jpg, scrambled_car_1.jpg, ...
+Semantic Relatedness Judgment Task — PsychoPy
+Prime (red) → ISI → Target (green). Respond RELATED (→) vs UNRELATED (←).
+Output CSV per-trial with timing, accuracy, condition, and words.
 """
 
 from psychopy import visual, core, event, logging
 from psychopy.hardware import keyboard
+import numpy as np
+import random, os, csv
 from pylsl import StreamInfo, StreamOutlet
-import os, glob, csv, random
 from datetime import datetime
+from wordlist import wordlist as WORDLIST
 
 # -------------------- Parameters (edit as needed) --------------------
-TITLE = "N170 (Faces vs Cars; Intact vs Scrambled)"
+PRIME_TIME = 0.200  # seconds prime on-screen
+TARGET_TIME = 0.200  # seconds target on-screen (visual persistence; responses continue)
+ISI_INTERVAL = (0.900, 1.100)  # seconds (min, max) between PRIME off and TARGET on
+RESP_WINDOW = (1.400, 1.600)  # seconds (min, max) from TARGET onset (responses close after this)
+N_TRIALS = 120  # total trials (must be even). Each target contributes 2 trials.
+
 FULLSCR = False
-WIN_SIZE = [1280, 800]
-BG_COLOR = [0.8, 0.8, 0.8]   # light grey; blank ISI per ERP CORE description
-IMG_HEIGHT = 0.9             # relative (units='height') max image height; keeps aspect ratio
-
-STIM_TIME = 0.300            # 300 ms
-ISI_RANGE = (1.100, 1.300)   # seconds, blank
-KEY_INTACT = 'right'         # RIGHT arrow = intact (faces, cars)
-KEY_SCRAMBLED = 'left'       # LEFT arrow = scrambled (scrambled faces/cars)
-
+WIN_SIZE = [1000, 700]
+BG_COLOR = [1, 1, 1]  # white background
+FONT_NAME = 'DejaVu Sans'
+TITLE = "Semantic Relatedness Judgment"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MEDIA_DIR = os.path.join(BASE_DIR, 'media', 'N170')
-OUT_CSV = os.path.join(BASE_DIR, f"n170_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
+OUT_CSV = os.path.join(BASE_DIR, f"semrel_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
 
-# Event codes (per ERP CORE)
-CODES_FACE_START = 1          # 1–40
-CODES_CAR_START  = 41         # 41–80
-CODES_SF_START   = 101        # 101–140 (scrambled faces)
-CODES_SC_START   = 141        # 141–180 (scrambled cars)
-RESP_CORRECT = 201
-RESP_INCORRECT = 202
+COLOR_PRIME = 'red'
+COLOR_TARGET = 'green'
+KEY_RELATED = 'right'  # right arrow key
+KEY_UNRELATED = 'left'  # left arrow key
+
+# Markers
+TARGET_STIM_ONSET_MARKER = 1
+RESP_KEY_MARKER = 2
+
+# Optional: small ITI after response/timeout (set to 0 to disable)
+ITI_SECONDS = 0.0
 
 # -------------------- LSL --------------------
 info = StreamInfo(name='PsychopyMarkerStream', type='Markers',
-                  channel_count=1, channel_format='int32',
-                  source_id='n170_faces_cars_unique')
+                 channel_count=1, channel_format='int32',
+                 source_id='word_pair_judgement_n400_unique')
 outlet = StreamOutlet(info)
 
-# -------------------- Utilities (style-aligned) --------------------
+# -------------------- Utilities --------------------
 logging.console.setLevel(logging.INFO)
 
-def write_text(win, text, pos=(0, 0), height=0.045, wrapWidth=1.6, bold=False):
+
+def send_marker(win, value):
+    """Send a marker value exactly on next flip."""
+    win.callOnFlip(outlet.push_sample, [int(value)])
+
+
+def write_text(win, text, pos=(0, 0), height=0.045, wrap=1.6, bold=False):
     return visual.TextStim(
-        win, text=text, pos=pos, height=height, wrapWidth=wrapWidth,
-        bold=bold, color='black', alignText='center', anchorVert='center', units='height'
-    )  # matches your helper signatures and units  # ref style: helpers in prior scripts
-
-def show_text_and_wait(win, text, wait_keys=('space',), pos=(0, 0.0), height=0.045):
-    stim = write_text(win, text, pos=pos, height=height)
-    stim.draw(); win.flip()
-    kb = keyboard.Keyboard()
-    kb.clearEvents(); event.clearEvents()
-    kb.waitKeys(keyList=list(wait_keys))
-
-def send_marker_on_flip(win, value):
-    """Schedule LSL push exactly on next flip (for precise stimulus onset)."""
-    win.callOnFlip(outlet.push_sample, [int(value)])  # same pattern as your code
-
-def load_images_by_pattern():
-    """
-    Returns four lists of absolute paths:
-      faces, cars, scrambled_faces, scrambled_cars
-    Lists are sorted by natural order to align with code ranges.
-    """
-    def sorted_glob(pattern):
-        paths = glob.glob(os.path.join(MEDIA_DIR, pattern))
-        # sort by the trailing number if present; fallback to name
-        def key(p):
-            name = os.path.splitext(os.path.basename(p))[0]
-            tail = ''.join(ch for ch in name if ch.isdigit())
-            return (int(tail) if tail.isdigit() else 10**9, name)
-        return sorted(paths, key=key)
-
-    faces  = sorted_glob('face_*.jpg')
-    cars   = sorted_glob('car_*.jpg')
-    sfaces = sorted_glob('scrambled_face_*.jpg') + sorted_glob('face_scrambled_*.jpg')
-    scars  = sorted_glob('scrambled_car_*.jpg')  + sorted_glob('car_scrambled_*.jpg')
-
-    return faces, cars, sfaces, scars
-
-def build_trials(faces, cars, sfaces, scars):
-    """
-    Builds 160 trials (or as many as available, keeping 1:1:1:1 if fewer).
-    Assigns per-image codes in the ERP CORE ranges.
-    """
-    n_face  = min(40, len(faces))
-    n_car   = min(40, len(cars))
-    n_sface = min(40, len(sfaces))
-    n_scar  = min(40, len(scars))
-
-    # Keep groups balanced to the smallest available among the four (up to 40)
-    n = min(n_face, n_car, n_sface, n_scar)
-    if n == 0:
-        raise RuntimeError(f"No balanced set found in {MEDIA_DIR}. "
-                           f"Add face_*, car_*, scrambled_face_*, scrambled_car_* images.")
-
-    faces  = faces[:n]
-    cars   = cars[:n]
-    sfaces = sfaces[:n]
-    scars  = scars[:n]
-
-    # Assign codes
-    trials = []
-    for i, p in enumerate(faces,  start=0):
-        trials.append(dict(path=p, cls='face',         scrambled=False, code=CODES_FACE_START + i))
-    for i, p in enumerate(cars,   start=0):
-        trials.append(dict(path=p, cls='car',          scrambled=False, code=CODES_CAR_START  + i))
-    for i, p in enumerate(sfaces, start=0):
-        trials.append(dict(path=p, cls='face',         scrambled=True,  code=CODES_SF_START   + i))
-    for i, p in enumerate(scars,  start=0):
-        trials.append(dict(path=p, cls='car',          scrambled=True,  code=CODES_SC_START   + i))
-
-    random.shuffle(trials)
-    return trials
-
-# -------------------- Main --------------------
-def main():
-    # Window + input
-    win = visual.Window(size=WIN_SIZE, units='height', color=BG_COLOR, fullscr=FULLSCR)
-    kb = keyboard.Keyboard()
-    mouse = event.Mouse(visible=False, win=win)
-
-    # Load media
-    faces, cars, sfaces, scars = load_images_by_pattern()
-    trials = build_trials(faces, cars, sfaces, scars)
-
-    # Prepare a reusable ImageStim
-    img_stim = visual.ImageStim(win, image=None, units='height', size=(IMG_HEIGHT, IMG_HEIGHT), interpolate=True)
-
-    # Instructions
-    instr = (
-        f"{TITLE}\n\n"
-        "You will see faces, cars, and their phase-scrambled versions.\n"
-        f"Press {KEY_INTACT.upper()} arrow for INTACT (faces, cars).\n"
-        f"Press {KEY_SCRAMBLED.upper()} arrow for SCRAMBLED (scrambled faces/cars).\n\n"
-        f"Stimulus: {int(STIM_TIME*1000)} ms. ISI: {int(ISI_RANGE[0]*1000)}–{int(ISI_RANGE[1]*1000)} ms.\n"
-        "Respond as accurately as possible.\n\n"
-        "Press SPACE to begin."
+        win, text=text, pos=pos, height=height, wrapWidth=wrap,
+        bold=bold, color='black', alignText='center', units='height', font=FONT_NAME
     )
-    show_text_and_wait(win, instr, wait_keys=('space',))
 
-    # CSV header
+
+def build_trial_dicts(items):
+    """
+    Given a list of (rel_prime, target, unrel_prime), return a dict keyed by target
+    and two trial dicts per target: one RELATED, one UNRELATED.
+    """
+    by_target = {}
+    trials_per_target = {}
+    for (rel, tgt, unrel) in items:
+        by_target[tgt] = (rel, unrel)
+    for tgt, (rel, unrel) in by_target.items():
+        trials_per_target[tgt] = [
+            dict(prime=rel, target=tgt, condition='related', correct_key=KEY_RELATED),
+            dict(prime=unrel, target=tgt, condition='unrelated', correct_key=KEY_UNRELATED),
+        ]
+    return trials_per_target
+
+
+def allocate_two_halves(trials_per_target, n_targets_needed):
+    """
+    Enforce the constraint: each target appears once per half.
+    Returns a single list of trials (first_half + second_half), each half shuffled.
+    """
+    all_targets = list(trials_per_target.keys())
+    random.shuffle(all_targets)
+    chosen = all_targets[:n_targets_needed]
+
+    first_half, second_half = [], []
+    # For each chosen target, randomly assign which of its two conditions goes to which half
+    for tgt in chosen:
+        pair = trials_per_target[tgt]
+        random.shuffle(pair)
+        first_half.append(pair[0])
+        second_half.append(pair[1])
+
+    random.shuffle(first_half)
+    random.shuffle(second_half)
+    return first_half + second_half
+
+
+# -------------------- Main Experiment --------------------
+
+def main():
+    # ---- Window ----
+    win = visual.Window(size=WIN_SIZE, units='pix', color=BG_COLOR, fullscr=FULLSCR)
+    kb = keyboard.Keyboard()
+
+    # ---- Text objects ----
+    instr = write_text(
+        win,
+        f"{TITLE}\n\n"
+        f"Red word (prime) → green word (target).\n"
+        f"RIGHT arrow if RELATED, LEFT arrow if UNRELATED.\n\n"
+        f"Prime {int(PRIME_TIME * 1000)} ms, ISI {int(ISI_INTERVAL[0] * 1000)}–{int(ISI_INTERVAL[1] * 1000)} ms,\n"
+        f"Target {int(TARGET_TIME * 1000)} ms, Response window {int(RESP_WINDOW[0] * 1000)}–{int(RESP_WINDOW[1] * 1000)} ms.\n\n"
+        f"Press SPACE to begin."
+    )
+
+    prime_stim = visual.TextStim(win, text='', height=60, color=COLOR_PRIME, font=FONT_NAME)
+    target_stim = visual.TextStim(win, text='', height=60, color=COLOR_TARGET, font=FONT_NAME)
+    fixation = visual.TextStim(win, text='+', height=40, color='black')
+
+    # Determine how many targets we can/should use
+    max_targets = len(WORDLIST)
+    needed_targets = N_TRIALS // 2
+    
+    wordlist = WORDLIST[:needed_targets]  # Limit wordlist to needed targets
+    
+    # Build trial dicts per target
+    trials_per_target = build_trial_dicts(wordlist)
+
+    # Allocate trials respecting half constraint
+    trial_list = allocate_two_halves(trials_per_target, needed_targets)
+
+    # Safety: enforce even count
+    assert len(trial_list) % 2 == 0
+
+    # ---- Instructions ----
+    instr.draw();
+    win.flip()
+    kb.clearEvents();
+    event.clearEvents()
+    kb.waitKeys(keyList=['space', 'escape'])
+    if any(k.name == 'escape' for k in kb.getKeys(waitRelease=False)):
+        win.close();
+        core.quit()
+
+    # ---- CSV header ----
     with open(OUT_CSV, "w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
         w.writerow([
-            "timestamp_iso", "trial_index", "image_file", "class", "scrambled",
-            "marker_code", "resp_key", "correct", "rt_ms", "stim_time_s", "isi_s"
+            "timestamp_iso", "trial_index", "prime", "target", "condition",
+            "prime_time_s", "isi_s", "target_time_s", "resp_window_s",
+            "resp_key", "correct", "rt_ms"
         ])
 
-    # Trial loop
-    for t_idx, t in enumerate(trials, start=1):
-        # Pre-trial state
-        kb.clearEvents(); event.clearEvents()
-        resp_key = None; rt_ms = None; correct = 0
+    # ---- Trial loop ----
+    for t_idx, t in enumerate(trial_list):
+        # PRIME
+        prime_stim.text = t['prime']
+        prime_stim.color = COLOR_PRIME
+        prime_on = core.getTime()
+        kb.clearEvents();
+        event.clearEvents()
 
-        # Prepare image (keep aspect ratio; height bounded by IMG_HEIGHT)
-        img_stim.image = t['path']
-        # Draw blank (BG only) and schedule code marker; flip = precise onset
-        send_marker_on_flip(win, t['code'])
-        img_stim.draw()
-        stim_on = core.getTime()
-        win.flip()
+        # Show prime for PRIME_TIME
+        while (core.getTime() - prime_on) < PRIME_TIME:
+            prime_stim.draw();
+            win.flip()
 
-        # Keep image on for STIM_TIME; accept responses during and after until ISI ends
-        # (We do NOT shorten timing on response; fixed timing is better for ERP.)
-        while (core.getTime() - stim_on) < STIM_TIME:
-            # keep the same frame to avoid redraw jitter
-            keys = kb.getKeys(keyList=[KEY_INTACT, KEY_SCRAMBLED, 'escape'], waitRelease=False)
-            if keys and resp_key is None:
-                k = keys[0].name
-                if k == 'escape':
-                    win.close(); core.quit()
-                if k in (KEY_INTACT, KEY_SCRAMBLED):
-                    resp_key = k
-                    rt_ms = (core.getTime() - stim_on) * 1000.0
-
-        # Stimulus off → blank ISI
-        isi = random.uniform(*ISI_RANGE)
+        # ISI (blank + fixation). No responses during ISI.
+        isi = random.uniform(*ISI_INTERVAL)
         isi_start = core.getTime()
         while (core.getTime() - isi_start) < isi:
-            win.flip()  # blank background
-            keys = kb.getKeys(keyList=[KEY_INTACT, KEY_SCRAMBLED, 'escape'], waitRelease=False)
-            if keys and resp_key is None:
+            fixation.draw();
+            win.flip()
+
+        # TARGET
+        target_stim.text = t['target']
+        target_stim.color = COLOR_TARGET
+        target_on = core.getTime()
+        resp_deadline = target_on + random.uniform(*RESP_WINDOW)
+        resp_key = None
+        rt_ms = None
+        correct = 0
+
+        marker_sent = False
+        # Show target for TARGET_TIME; responses accepted immediately and continue until resp_deadline
+        while core.getTime() < resp_deadline:
+            elapsed = core.getTime() - target_on
+            if elapsed < TARGET_TIME:
+                target_stim.draw()
+                if not marker_sent:
+                    send_marker(win, TARGET_STIM_ONSET_MARKER)
+                    marker_sent = True
+            else:
+                # after target offset, keep fixation
+                fixation.draw()
+            win.flip()
+
+            keys = kb.getKeys(keyList=[KEY_RELATED, KEY_UNRELATED, 'escape'], waitRelease=False)
+            if keys:
                 k = keys[0].name
                 if k == 'escape':
-                    win.close(); core.quit()
-                if k in (KEY_INTACT, KEY_SCRAMBLED):
+                    win.close();
+                    core.quit()
+                if resp_key is None and k in (KEY_RELATED, KEY_UNRELATED):
+                    send_marker(win, RESP_KEY_MARKER)
                     resp_key = k
-                    rt_ms = (core.getTime() - stim_on) * 1000.0
+                    rt_ms = (core.getTime() - target_on) * 1000.0
+                    correct = int(resp_key == t['correct_key'])
+                    # break  # end trial immediately on response
 
-        # Score response (LEFT = scrambled; RIGHT = intact)
-        if resp_key is not None:
-            expect_key = KEY_SCRAMBLED if t['scrambled'] else KEY_INTACT
-            correct = int(resp_key == expect_key)
-            outlet.push_sample([RESP_CORRECT if correct else RESP_INCORRECT])
-        else:
-            correct = 0  # no response
+        # Timeout case (no response)
+        if resp_key is None:
+            correct = 0
+
+        # Optional ITI
+        if ITI_SECONDS > 0:
+            iti_start = core.getTime()
+            while (core.getTime() - iti_start) < ITI_SECONDS:
+                fixation.draw();
+                win.flip()
 
         # Log
         with open(OUT_CSV, "a", newline="", encoding="utf-8") as fh:
             w = csv.writer(fh)
             w.writerow([
-                datetime.now().isoformat(timespec='milliseconds'),
-                t_idx,
-                os.path.basename(t['path']),
-                t['cls'],
-                int(t['scrambled']),
-                t['code'],
-                resp_key if resp_key else '',
-                correct,
-                round(rt_ms, 2) if rt_ms else '',
-                STIM_TIME,
-                round(isi, 3)
+                datetime.now().isoformat(timespec='milliseconds'), t_idx,
+                t['prime'], t['target'], t['condition'],
+                PRIME_TIME, round(isi, 3), TARGET_TIME,
+                round(resp_deadline - target_on, 3),
+                resp_key if resp_key else '', correct, round(rt_ms, 2) if rt_ms else ''
             ])
 
-        # Emergency quit
-        for k in kb.getKeys(waitRelease=False):
-            if k.name == 'escape':
-                win.close(); core.quit()
-
-    # End
+    # ---- End screen ----
     end = write_text(
         win,
-        f"Session complete.\nTrials: {len(trials)}\nData saved to:\n{os.path.basename(OUT_CSV)}\n\nPress ENTER to exit.",
+        f"Session complete.\n\nTrials: {len(trial_list)}\nData saved to:\n{os.path.basename(OUT_CSV)}\n\nPress ENTER to exit.",
         height=0.05
     )
-    end.draw(); win.flip()
+    end.draw();
+    win.flip()
+
     kb.clearEvents()
     while True:
         keys = kb.getKeys(waitRelease=False)
@@ -249,7 +252,9 @@ def main():
             break
         core.wait(0.01)
 
-    win.close(); core.quit()
+    win.close();
+    core.quit()
+
 
 if __name__ == "__main__":
     main()
