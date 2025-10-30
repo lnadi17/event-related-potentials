@@ -9,13 +9,15 @@ Visual flow:
 - ISI: fixation "+"
 - Cooldown (after target offset until window opens): fixation "+"
 - Response window: "?" prompt
+- PRIME (logo): image drawn with aspect ratio preserved and fitted into a max (W,H) box
 """
 
 from psychopy import visual, core, event, logging
 from psychopy.hardware import keyboard
 import random, os, csv
-# from pylsl import StreamInfo, StreamOutlet
+#from pylsl import StreamInfo, StreamOutlet
 from datetime import datetime
+from PIL import Image  # to read image native sizes for aspect-ratio preserving fit
 
 # -------------------- Parameters (edit as needed) --------------------
 PRIME_TIME = 0.160            # seconds prime (logo) on-screen
@@ -51,28 +53,29 @@ ITI_SECONDS = 0.0
 # --------------- MEDIA (logos as image primes) ----------------
 MEDIA_DIR = os.path.join(BASE_DIR, "media")  # prefix for all logo paths
 
-# Provide relative paths from MEDIA_DIR
+# Provide relative paths from MEDIA_DIR or absolute/BASE_DIR-relative paths.
 BRAND_PATHS = [
-    "logos/instagram.png",
-    "logos/linkedin.png",
+    "media/logos/instagram.png",
+    "media/logos/linkedin.png",
 ]
 
 WORDLIST = ['word1', 'word2', 'word3', 'word4', 'word5']  # Example target words
 
-PRIME_IMAGE_SIZE = (500, 300)  # (w, h) in pixels; tweak for your display
+# Max bounding box for logo primes (in window units, here 'pix'); aspect preserved within this box
+PRIME_IMAGE_MAX = (500, 300)  # (max_width, max_height)
 
 # -------------------- LSL --------------------
-# info = StreamInfo(name='PsychopyMarkerStream', type='Markers',
-#                   channel_count=1, channel_format='int32',
-#                   source_id='logo_word_n400')
-# outlet = StreamOutlet(info)
+#info = StreamInfo(name='PsychopyMarkerStream', type='Markers',
+#                  channel_count=1, channel_format='int32',
+#                  source_id='logo_word_n400')
+#outlet = StreamOutlet(info)
 
 # -------------------- Utilities --------------------
 logging.console.setLevel(logging.INFO)
 
 def send_marker(win, value):
     """Send a marker value exactly on next flip."""
-    # win.callOnFlip(outlet.push_sample, [int(value)])
+#    win.callOnFlip(outlet.push_sample, [int(value)])
     pass
 
 def jitter_or_float(x):
@@ -107,6 +110,23 @@ def resolve_brand_paths(paths):
         raise FileNotFoundError("None of the BRAND_PATHS exist. Check MEDIA_DIR/paths.")
     return resolved
 
+def fitted_size_for_image(img_path, max_size):
+    """
+    Compute (w,h) that fits 'img_path' inside 'max_size' while preserving aspect ratio.
+    max_size is (max_w, max_h) in the same units as the window ('pix' here).
+    """
+    try:
+        with Image.open(img_path) as im:
+            w, h = im.size  # native pixels
+    except Exception as e:
+        logging.warning(f"[WARN] Could not read image size for {img_path}: {e}. Using max box.")
+        return max_size
+    max_w, max_h = max_size
+    scale = min(max_w / float(w), max_h / float(h))
+    new_w = max(1, int(round(w * scale)))
+    new_h = max(1, int(round(h * scale)))
+    return (new_w, new_h)
+
 # -------------------- Main Experiment --------------------
 def main():
     # ---- Window ----
@@ -129,8 +149,8 @@ def main():
         height=24, color='black', wrapWidth=900, font=FONT_NAME, alignText='center'
     )
 
-    # Image prime (logo)
-    prime_img = visual.ImageStim(win, image=None, size=PRIME_IMAGE_SIZE, interpolate=True)
+    # Image prime (logo) — size set per-trial to preserve aspect ratio
+    prime_img = visual.ImageStim(win, image=None, size=None, interpolate=True)
 
     # Target word
     target_stim = visual.TextStim(win, text='', height=60, color=COLOR_TARGET, font=FONT_NAME)
@@ -141,6 +161,9 @@ def main():
 
     # ---- Build trials (full factorial: each target x each brand) ----
     brand_paths = resolve_brand_paths(BRAND_PATHS)
+    # Pre-compute fitted sizes for each logo to preserve AR and avoid repeated disk I/O
+    size_cache = {bp: fitted_size_for_image(bp, PRIME_IMAGE_MAX) for bp in brand_paths}
+
     targets = list(WORDLIST)
 
     full = []
@@ -149,6 +172,7 @@ def main():
             full.append({
                 "brand_path": bpath,
                 "brand": os.path.splitext(os.path.basename(bpath))[0],
+                "brand_size": size_cache[bpath],  # AR-preserved fitted size for this logo
                 "target": tgt,
                 # 'condition' and 'correct_key' intentionally omitted (unknown without labels)
             })
@@ -181,8 +205,9 @@ def main():
 
     # ---- Trial loop ----
     for t_idx, t in enumerate(full):
-        # PRIME (logo)
+        # PRIME (logo) — set image and AR-preserved fitted size
         prime_img.image = t["brand_path"]
+        prime_img.size = t["brand_size"]  # <- preserves aspect ratio within PRIME_IMAGE_MAX
         prime_on = core.getTime()
         kb.clearEvents(); event.clearEvents()
 
