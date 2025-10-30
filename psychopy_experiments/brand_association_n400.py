@@ -1,37 +1,41 @@
 # -*- coding: utf-8 -*-
 """
-Semantic Relatedness Judgment Task — PsychoPy
-Prime (red) → ISI → Target (green). Respond RELATED (→) vs UNRELATED (←).
-Output CSV per-trial with timing, accuracy, condition, and words.
+Logo→Word Semantic Relatedness (N400) — PsychoPy
+Prime (logo) → ISI → Target (word, green). Respond RELATED (→) vs UNRELATED (←).
+Response keys are accepted only AFTER a cooldown following TARGET onset.
+Per-trial CSV with timing, keys, and RTs (from target onset and from window open).
 """
 
 from psychopy import visual, core, event, logging
 from psychopy.hardware import keyboard
-import numpy as np
 import random, os, csv
 from pylsl import StreamInfo, StreamOutlet
 from datetime import datetime
-from wordlist import wordlist as WORDLIST
+from wordlist import wordlist as WORDLIST  # <- list of target words (see example below)
 
 # -------------------- Parameters (edit as needed) --------------------
-PRIME_TIME = 0.200  # seconds prime on-screen
-TARGET_TIME = 0.200  # seconds target on-screen (visual persistence; responses continue)
-ISI_INTERVAL = (0.900, 1.100)  # seconds (min, max) between PRIME off and TARGET on
-RESP_WINDOW = (1.400, 1.600)  # seconds (min, max) from TARGET onset (responses close after this)
-N_TRIALS = 120  # total trials (must be even). Each target contributes 2 trials.
+PRIME_TIME = 0.160            # seconds prime (logo) on-screen
+TARGET_TIME = 0.160           # seconds target word on-screen (visual persistence)
+ISI_INTERVAL = (0.700, 0.700) # seconds (min, max) between PRIME off and TARGET on
+
+RESPONSE_COOLDOWN = 1.000     # seconds after TARGET onset during which responses are IGNORED
+RESP_WINDOW = 0.500           # seconds accepted AFTER cooldown (float or tuple for jitter, e.g., (0.45, 0.55))
+
+# Trials: by default use ALL combinations (len(WORDLIST) * len(BRAND_PATHS)).
+# Set N_TRIALS = None to use all; or an int to sample that many from the full factorial.
+N_TRIALS = None
 
 FULLSCR = False
 WIN_SIZE = [1000, 700]
-BG_COLOR = [1, 1, 1]  # white background
+BG_COLOR = [1, 1, 1]  # white
 FONT_NAME = 'DejaVu Sans'
-TITLE = "Semantic Relatedness Judgment"
+TITLE = "Logo→Word Relatedness (N400)"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-OUT_CSV = os.path.join(BASE_DIR, f"semrel_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
+OUT_CSV = os.path.join(BASE_DIR, f"logo_word_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
 
-COLOR_PRIME = 'red'
 COLOR_TARGET = 'green'
-KEY_RELATED = 'right'  # right arrow key
-KEY_UNRELATED = 'left'  # left arrow key
+KEY_RELATED = 'right'   # →
+KEY_UNRELATED = 'left'  # ←
 
 # Markers
 TARGET_STIM_ONSET_MARKER = 1
@@ -40,211 +44,206 @@ RESP_KEY_MARKER = 2
 # Optional: small ITI after response/timeout (set to 0 to disable)
 ITI_SECONDS = 0.0
 
+# --------------- MEDIA (logos as image primes) ----------------
+MEDIA_DIR = os.path.join(BASE_DIR, "media")  # prefix for all logo paths
+
+# Provide relative paths from MEDIA_DIR or absolute paths. Example stubs:
+BRAND_PATHS = [
+    "media/logos/instagram.png",
+    "media/logos/linkedin.png",
+]
+
+PRIME_IMAGE_SIZE = (500, 300)  # (w, h) in pixels; tweak for your display
+
 # -------------------- LSL --------------------
 info = StreamInfo(name='PsychopyMarkerStream', type='Markers',
-                 channel_count=1, channel_format='int32',
-                 source_id='word_pair_judgement_n400_unique')
+                  channel_count=1, channel_format='int32',
+                  source_id='logo_word_n400')
 outlet = StreamOutlet(info)
 
 # -------------------- Utilities --------------------
 logging.console.setLevel(logging.INFO)
 
-
 def send_marker(win, value):
     """Send a marker value exactly on next flip."""
     win.callOnFlip(outlet.push_sample, [int(value)])
 
+def jitter_or_float(x):
+    """Return a float from either a float or a (min,max) tuple."""
+    if isinstance(x, (tuple, list)) and len(x) == 2:
+        return random.uniform(x[0], x[1])
+    return float(x)
 
-def write_text(win, text, pos=(0, 0), height=0.045, wrap=1.6, bold=False):
-    return visual.TextStim(
-        win, text=text, pos=pos, height=height, wrapWidth=wrap,
-        bold=bold, color='black', alignText='center', units='height', font=FONT_NAME
-    )
-
-
-def build_trial_dicts(items):
-    """
-    Given a list of (rel_prime, target, unrel_prime), return a dict keyed by target
-    and two trial dicts per target: one RELATED, one UNRELATED.
-    """
-    by_target = {}
-    trials_per_target = {}
-    for (rel, tgt, unrel) in items:
-        by_target[tgt] = (rel, unrel)
-    for tgt, (rel, unrel) in by_target.items():
-        trials_per_target[tgt] = [
-            dict(prime=rel, target=tgt, condition='related', correct_key=KEY_RELATED),
-            dict(prime=unrel, target=tgt, condition='unrelated', correct_key=KEY_UNRELATED),
-        ]
-    return trials_per_target
-
-
-def allocate_two_halves(trials_per_target, n_targets_needed):
-    """
-    Enforce the constraint: each target appears once per half.
-    Returns a single list of trials (first_half + second_half), each half shuffled.
-    """
-    all_targets = list(trials_per_target.keys())
-    random.shuffle(all_targets)
-    chosen = all_targets[:n_targets_needed]
-
-    first_half, second_half = [], []
-    # For each chosen target, randomly assign which of its two conditions goes to which half
-    for tgt in chosen:
-        pair = trials_per_target[tgt]
-        random.shuffle(pair)
-        first_half.append(pair[0])
-        second_half.append(pair[1])
-
-    random.shuffle(first_half)
-    random.shuffle(second_half)
-    return first_half + second_half
-
+def resolve_brand_paths(paths):
+    """Resolve BRAND_PATHS against MEDIA_DIR and sanity-check existence."""
+    resolved = []
+    for p in paths:
+        p2 = p if os.path.isabs(p) else os.path.join(MEDIA_DIR, p)
+        if not os.path.exists(p2):
+            logging.warning(f"[WARN] Brand image not found: {p2}")
+        resolved.append(p2)
+    if not any(os.path.exists(p) for p in resolved):
+        raise FileNotFoundError("None of the BRAND_PATHS exist. Check MEDIA_DIR/paths.")
+    return resolved
 
 # -------------------- Main Experiment --------------------
-
 def main():
     # ---- Window ----
     win = visual.Window(size=WIN_SIZE, units='pix', color=BG_COLOR, fullscr=FULLSCR)
     kb = keyboard.Keyboard()
 
-    # ---- Text objects ----
-    instr = write_text(
+    # ---- Stimuli ----
+    instr = visual.TextStim(
         win,
-        f"{TITLE}\n\n"
-        f"Red word (prime) → green word (target).\n"
-        f"RIGHT arrow if RELATED, LEFT arrow if UNRELATED.\n\n"
-        f"Prime {int(PRIME_TIME * 1000)} ms, ISI {int(ISI_INTERVAL[0] * 1000)}–{int(ISI_INTERVAL[1] * 1000)} ms,\n"
-        f"Target {int(TARGET_TIME * 1000)} ms, Response window {int(RESP_WINDOW[0] * 1000)}–{int(RESP_WINDOW[1] * 1000)} ms.\n\n"
-        f"Press SPACE to begin."
+        text=(
+            f"{TITLE}\n\n"
+            f"Logo (prime) → green word (target).\n"
+            f"RIGHT (→) if RELATED, LEFT (←) if UNRELATED.\n\n"
+            f"Prime {int(PRIME_TIME*1000)} ms, ISI {int(ISI_INTERVAL[0]*1000)}–{int(ISI_INTERVAL[1]*1000)} ms,\n"
+            f"Target {int(TARGET_TIME*1000)} ms,\n"
+            f"Cooldown {int(RESPONSE_COOLDOWN*1000)} ms (no responses accepted), then\n"
+            f"Response window {int(jitter_or_float(RESP_WINDOW)*1000)} ms.\n\n"
+            f"Press SPACE to begin."
+        ),
+        height=24, color='black', wrapWidth=900, font=FONT_NAME, alignText='center'
     )
 
-    prime_stim = visual.TextStim(win, text='', height=60, color=COLOR_PRIME, font=FONT_NAME)
+    # Image prime (logo)
+    prime_img = visual.ImageStim(win, image=None, size=PRIME_IMAGE_SIZE, interpolate=True)
+
+    # Target word
     target_stim = visual.TextStim(win, text='', height=60, color=COLOR_TARGET, font=FONT_NAME)
+
+    # Fixation
     fixation = visual.TextStim(win, text='+', height=40, color='black')
 
-    # Determine how many targets we can/should use
-    max_targets = len(WORDLIST)
-    needed_targets = N_TRIALS // 2
-    
-    wordlist = WORDLIST[:needed_targets]  # Limit wordlist to needed targets
-    
-    # Build trial dicts per target
-    trials_per_target = build_trial_dicts(wordlist)
+    # ---- Build trials (full factorial: each target x each brand) ----
+    brand_paths = resolve_brand_paths(BRAND_PATHS)
+    targets = list(WORDLIST)  # <- your target words
 
-    # Allocate trials respecting half constraint
-    trial_list = allocate_two_halves(trials_per_target, needed_targets)
+    full = []
+    for tgt in targets:
+        for bpath in brand_paths:
+            full.append({
+                "brand_path": bpath,
+                "brand": os.path.splitext(os.path.basename(bpath))[0],
+                "target": tgt,
+                # 'condition' and 'correct_key' intentionally omitted (unknown without labels)
+            })
 
-    # Safety: enforce even count
-    assert len(trial_list) % 2 == 0
+    if len(full) == 0:
+        raise RuntimeError("No trials to run (no targets or no valid logos).")
+
+    random.shuffle(full)
+
+    if isinstance(N_TRIALS, int) and N_TRIALS > 0:
+        full = random.sample(full, k=min(N_TRIALS, len(full)))
 
     # ---- Instructions ----
-    instr.draw();
-    win.flip()
-    kb.clearEvents();
-    event.clearEvents()
+    instr.draw(); win.flip()
+    kb.clearEvents(); event.clearEvents()
     kb.waitKeys(keyList=['space', 'escape'])
     if any(k.name == 'escape' for k in kb.getKeys(waitRelease=False)):
-        win.close();
-        core.quit()
+        win.close(); core.quit()
 
     # ---- CSV header ----
     with open(OUT_CSV, "w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
         w.writerow([
-            "timestamp_iso", "trial_index", "prime", "target", "condition",
-            "prime_time_s", "isi_s", "target_time_s", "resp_window_s",
-            "resp_key", "correct", "rt_ms"
+            "timestamp_iso", "trial_index",
+            "brand", "brand_path", "target",
+            "prime_time_s", "isi_s", "target_time_s",
+            "cooldown_s", "resp_window_s",
+            "resp_key", "rt_ms_from_target", "rt_ms_from_window_open"
         ])
 
     # ---- Trial loop ----
-    for t_idx, t in enumerate(trial_list):
-        # PRIME
-        prime_stim.text = t['prime']
-        prime_stim.color = COLOR_PRIME
+    for t_idx, t in enumerate(full):
+        # PRIME (logo)
+        prime_img.image = t["brand_path"]
         prime_on = core.getTime()
-        kb.clearEvents();
-        event.clearEvents()
+        kb.clearEvents(); event.clearEvents()
 
-        # Show prime for PRIME_TIME
         while (core.getTime() - prime_on) < PRIME_TIME:
-            prime_stim.draw();
+            prime_img.draw()
             win.flip()
 
-        # ISI (blank + fixation). No responses during ISI.
+        # ISI (fixation)
         isi = random.uniform(*ISI_INTERVAL)
         isi_start = core.getTime()
         while (core.getTime() - isi_start) < isi:
-            fixation.draw();
+            fixation.draw()
             win.flip()
 
-        # TARGET
+        # TARGET (word)
         target_stim.text = t['target']
-        target_stim.color = COLOR_TARGET
         target_on = core.getTime()
-        resp_deadline = target_on + random.uniform(*RESP_WINDOW)
-        resp_key = None
-        rt_ms = None
-        correct = 0
+        window_open = target_on + RESPONSE_COOLDOWN
+        resp_win_len = jitter_or_float(RESP_WINDOW)
+        resp_deadline = window_open + resp_win_len
 
+        # For clean gating, drop any pre-target key noise
+        kb.clearEvents(); event.clearEvents()
+        resp_key = None
+        rt_ms_from_target = None
+        rt_ms_from_window = None
         marker_sent = False
-        # Show target for TARGET_TIME; responses accepted immediately and continue until resp_deadline
+
         while core.getTime() < resp_deadline:
-            elapsed = core.getTime() - target_on
+            now = core.getTime()
+            elapsed = now - target_on
+
             if elapsed < TARGET_TIME:
                 target_stim.draw()
                 if not marker_sent:
-                    send_marker(win, TARGET_STIM_ONSET_MARKER)
+                    send_marker(win, TARGET_STIM_ONSET_MARKER)  # on first target frame
                     marker_sent = True
             else:
-                # after target offset, keep fixation
                 fixation.draw()
+
             win.flip()
 
+            # Accept keys only after cooldown window opens
             keys = kb.getKeys(keyList=[KEY_RELATED, KEY_UNRELATED, 'escape'], waitRelease=False)
             if keys:
                 k = keys[0].name
                 if k == 'escape':
-                    win.close();
-                    core.quit()
-                if resp_key is None and k in (KEY_RELATED, KEY_UNRELATED):
+                    win.close(); core.quit()
+                if resp_key is None and (now >= window_open) and (k in (KEY_RELATED, KEY_UNRELATED)):
                     send_marker(win, RESP_KEY_MARKER)
                     resp_key = k
-                    rt_ms = (core.getTime() - target_on) * 1000.0
-                    correct = int(resp_key == t['correct_key'])
-                    # break  # end trial immediately on response
-
-        # Timeout case (no response)
-        if resp_key is None:
-            correct = 0
+                    rt_ms_from_target = (now - target_on) * 1000.0
+                    rt_ms_from_window = (now - window_open) * 1000.0
+                    # do NOT break; we keep showing fixation until deadline for consistency
+                    # (flip the line above to 'break' if you want to end-trial immediately)
 
         # Optional ITI
         if ITI_SECONDS > 0:
             iti_start = core.getTime()
             while (core.getTime() - iti_start) < ITI_SECONDS:
-                fixation.draw();
-                win.flip()
+                fixation.draw(); win.flip()
 
-        # Log
+        # ---- Log row ----
         with open(OUT_CSV, "a", newline="", encoding="utf-8") as fh:
             w = csv.writer(fh)
             w.writerow([
                 datetime.now().isoformat(timespec='milliseconds'), t_idx,
-                t['prime'], t['target'], t['condition'],
+                t['brand'], t['brand_path'], t['target'],
                 PRIME_TIME, round(isi, 3), TARGET_TIME,
-                round(resp_deadline - target_on, 3),
-                resp_key if resp_key else '', correct, round(rt_ms, 2) if rt_ms else ''
+                RESPONSE_COOLDOWN, round(resp_win_len, 3),
+                (resp_key or ''),
+                round(rt_ms_from_target, 2) if rt_ms_from_target is not None else '',
+                round(rt_ms_from_window, 2) if rt_ms_from_window is not None else ''
             ])
 
     # ---- End screen ----
-    end = write_text(
+    end = visual.TextStim(
         win,
-        f"Session complete.\n\nTrials: {len(trial_list)}\nData saved to:\n{os.path.basename(OUT_CSV)}\n\nPress ENTER to exit.",
-        height=0.05
+        text=(f"Session complete.\n\nTrials: {len(full)}\nData saved to:\n"
+              f"{os.path.basename(OUT_CSV)}\n\nPress ENTER to exit."),
+        height=28, color='black', wrapWidth=900, font=FONT_NAME, alignText='center'
     )
-    end.draw();
-    win.flip()
-
+    end.draw(); win.flip()
     kb.clearEvents()
     while True:
         keys = kb.getKeys(waitRelease=False)
@@ -252,9 +251,7 @@ def main():
             break
         core.wait(0.01)
 
-    win.close();
-    core.quit()
-
+    win.close(); core.quit()
 
 if __name__ == "__main__":
     main()
