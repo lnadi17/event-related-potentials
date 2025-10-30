@@ -11,7 +11,6 @@ from psychopy.hardware import keyboard
 import random, os, csv
 from pylsl import StreamInfo, StreamOutlet
 from datetime import datetime
-from wordlist import wordlist as WORDLIST  # <- list of target words (see example below)
 
 # -------------------- Parameters (edit as needed) --------------------
 PRIME_TIME = 0.160            # seconds prime (logo) on-screen
@@ -52,6 +51,8 @@ BRAND_PATHS = [
     "media/logos/instagram.png",
     "media/logos/linkedin.png",
 ]
+
+WORDLIST = ['word1', 'word2', 'word3', 'word4', 'word5']  # Example target words
 
 PRIME_IMAGE_SIZE = (500, 300)  # (w, h) in pixels; tweak for your display
 
@@ -119,7 +120,7 @@ def main():
 
     # ---- Build trials (full factorial: each target x each brand) ----
     brand_paths = resolve_brand_paths(BRAND_PATHS)
-    targets = list(WORDLIST)  # <- your target words
+    targets = list(WORDLIST)
 
     full = []
     for tgt in targets:
