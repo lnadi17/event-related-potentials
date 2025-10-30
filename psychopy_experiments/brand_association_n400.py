@@ -4,12 +4,17 @@ Logo→Word Semantic Relatedness (N400) — PsychoPy
 Prime (logo) → ISI → Target (word, green). Respond RELATED (→) vs UNRELATED (←).
 Response keys are accepted only AFTER a cooldown following TARGET onset.
 Per-trial CSV with timing, keys, and RTs (from target onset and from window open).
+
+Visual flow:
+- ISI: fixation "+"
+- Cooldown (after target offset until window opens): fixation "+"
+- Response window: "?" prompt
 """
 
 from psychopy import visual, core, event, logging
 from psychopy.hardware import keyboard
 import random, os, csv
-from pylsl import StreamInfo, StreamOutlet
+# from pylsl import StreamInfo, StreamOutlet
 from datetime import datetime
 
 # -------------------- Parameters (edit as needed) --------------------
@@ -46,10 +51,10 @@ ITI_SECONDS = 0.0
 # --------------- MEDIA (logos as image primes) ----------------
 MEDIA_DIR = os.path.join(BASE_DIR, "media")  # prefix for all logo paths
 
-# Provide relative paths from MEDIA_DIR or absolute paths. Example stubs:
+# Provide relative paths from MEDIA_DIR
 BRAND_PATHS = [
-    "media/logos/instagram.png",
-    "media/logos/linkedin.png",
+    "logos/instagram.png",
+    "logos/linkedin.png",
 ]
 
 WORDLIST = ['word1', 'word2', 'word3', 'word4', 'word5']  # Example target words
@@ -57,17 +62,18 @@ WORDLIST = ['word1', 'word2', 'word3', 'word4', 'word5']  # Example target words
 PRIME_IMAGE_SIZE = (500, 300)  # (w, h) in pixels; tweak for your display
 
 # -------------------- LSL --------------------
-info = StreamInfo(name='PsychopyMarkerStream', type='Markers',
-                  channel_count=1, channel_format='int32',
-                  source_id='logo_word_n400')
-outlet = StreamOutlet(info)
+# info = StreamInfo(name='PsychopyMarkerStream', type='Markers',
+#                   channel_count=1, channel_format='int32',
+#                   source_id='logo_word_n400')
+# outlet = StreamOutlet(info)
 
 # -------------------- Utilities --------------------
 logging.console.setLevel(logging.INFO)
 
 def send_marker(win, value):
     """Send a marker value exactly on next flip."""
-    win.callOnFlip(outlet.push_sample, [int(value)])
+    # win.callOnFlip(outlet.push_sample, [int(value)])
+    pass
 
 def jitter_or_float(x):
     """Return a float from either a float or a (min,max) tuple."""
@@ -76,13 +82,27 @@ def jitter_or_float(x):
     return float(x)
 
 def resolve_brand_paths(paths):
-    """Resolve BRAND_PATHS against MEDIA_DIR and sanity-check existence."""
+    """
+    Resolve BRAND_PATHS against MEDIA_DIR and BASE_DIR; prefer existing paths.
+    Falls back to MEDIA_DIR-joined path if nothing exists (and warns).
+    """
     resolved = []
     for p in paths:
-        p2 = p if os.path.isabs(p) else os.path.join(MEDIA_DIR, p)
-        if not os.path.exists(p2):
-            logging.warning(f"[WARN] Brand image not found: {p2}")
-        resolved.append(p2)
+        candidates = []
+        if os.path.isabs(p):
+            candidates = [p]
+        else:
+            # try MEDIA_DIR/p then BASE_DIR/p
+            candidates = [os.path.join(MEDIA_DIR, p), os.path.join(BASE_DIR, p)]
+        chosen = None
+        for c in candidates:
+            if os.path.exists(c):
+                chosen = c
+                break
+        if chosen is None:
+            chosen = candidates[0]
+            logging.warning(f"[WARN] Brand image not found (using path anyway): {chosen}")
+        resolved.append(chosen)
     if not any(os.path.exists(p) for p in resolved):
         raise FileNotFoundError("None of the BRAND_PATHS exist. Check MEDIA_DIR/paths.")
     return resolved
@@ -102,8 +122,8 @@ def main():
             f"RIGHT (→) if RELATED, LEFT (←) if UNRELATED.\n\n"
             f"Prime {int(PRIME_TIME*1000)} ms, ISI {int(ISI_INTERVAL[0]*1000)}–{int(ISI_INTERVAL[1]*1000)} ms,\n"
             f"Target {int(TARGET_TIME*1000)} ms,\n"
-            f"Cooldown {int(RESPONSE_COOLDOWN*1000)} ms (no responses accepted), then\n"
-            f"Response window {int(jitter_or_float(RESP_WINDOW)*1000)} ms.\n\n"
+            f"Cooldown {int(RESPONSE_COOLDOWN*1000)} ms (no responses accepted, '+' shown), then\n"
+            f"Response window {int(jitter_or_float(RESP_WINDOW)*1000)} ms ('?' shown).\n\n"
             f"Press SPACE to begin."
         ),
         height=24, color='black', wrapWidth=900, font=FONT_NAME, alignText='center'
@@ -115,8 +135,9 @@ def main():
     # Target word
     target_stim = visual.TextStim(win, text='', height=60, color=COLOR_TARGET, font=FONT_NAME)
 
-    # Fixation
+    # Fixation and response-window prompt
     fixation = visual.TextStim(win, text='+', height=40, color='black')
+    question = visual.TextStim(win, text='?', height=60, color='black')
 
     # ---- Build trials (full factorial: each target x each brand) ----
     brand_paths = resolve_brand_paths(BRAND_PATHS)
@@ -176,7 +197,7 @@ def main():
             fixation.draw()
             win.flip()
 
-        # TARGET (word)
+        # TARGET (word) → cooldown (fixation) → response window ("?")
         target_stim.text = t['target']
         target_on = core.getTime()
         window_open = target_on + RESPONSE_COOLDOWN
@@ -195,16 +216,23 @@ def main():
             elapsed = now - target_on
 
             if elapsed < TARGET_TIME:
+                # During target: show target
                 target_stim.draw()
                 if not marker_sent:
                     send_marker(win, TARGET_STIM_ONSET_MARKER)  # on first target frame
                     marker_sent = True
             else:
-                fixation.draw()
+                # After target offset:
+                if now < window_open:
+                    # Cooldown: show fixation
+                    fixation.draw()
+                else:
+                    # Response window: show '?'
+                    question.draw()
 
             win.flip()
 
-            # Accept keys only after cooldown window opens
+            # Accept keys only during response window
             keys = kb.getKeys(keyList=[KEY_RELATED, KEY_UNRELATED, 'escape'], waitRelease=False)
             if keys:
                 k = keys[0].name
@@ -215,8 +243,7 @@ def main():
                     resp_key = k
                     rt_ms_from_target = (now - target_on) * 1000.0
                     rt_ms_from_window = (now - window_open) * 1000.0
-                    # do NOT break; we keep showing fixation until deadline for consistency
-                    # (flip the line above to 'break' if you want to end-trial immediately)
+                    # keep drawing until resp_deadline for consistent timing; change to 'break' to end early
 
         # Optional ITI
         if ITI_SECONDS > 0:
