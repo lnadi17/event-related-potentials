@@ -24,8 +24,8 @@ PRIME_TIME = 0.160            # seconds prime (logo) on-screen
 TARGET_TIME = 0.160           # seconds target word on-screen (visual persistence)
 ISI_INTERVAL = (0.700, 0.700) # seconds (min, max) between PRIME off and TARGET on
 
-RESPONSE_COOLDOWN = 1.000     # seconds after TARGET onset during which responses are IGNORED
-RESP_WINDOW = 0.500           # seconds accepted AFTER cooldown (float or tuple for jitter, e.g., (0.45, 0.55))
+RESPONSE_COOLDOWN = 0.000     # seconds after TARGET onset during which responses are IGNORED
+RESP_WINDOW = 1           # seconds accepted AFTER cooldown (float or tuple for jitter, e.g., (0.45, 0.55))
 
 # Trials: by default use ALL combinations (len(WORDLIST) * len(BRAND_PATHS)).
 # Set N_TRIALS = None to use all; or an int to sample that many from the full factorial.
@@ -48,18 +48,63 @@ TARGET_STIM_ONSET_MARKER = 1
 RESP_KEY_MARKER = 2
 
 # Optional: small ITI after response/timeout (set to 0 to disable)
-ITI_SECONDS = 0.0
+ITI_SECONDS = 0.300
 
 # --------------- MEDIA (logos as image primes) ----------------
 MEDIA_DIR = os.path.join(BASE_DIR, "media")  # prefix for all logo paths
 
 # Provide relative paths from MEDIA_DIR or absolute/BASE_DIR-relative paths.
 BRAND_PATHS = [
-    "media/logos/instagram.png",
-    "media/logos/linkedin.png",
+    "media/logos/facebook.png",
+    "media/logos/youtube.png",
 ]
 
-WORDLIST = ['word1', 'word2', 'word3', 'word4', 'word5']  # Example target words
+WORDLIST = [
+    'კავშირი',  # Facebook
+    'მეგობრები',
+    'საზოგადოება',
+    'ჯგუფი',
+    'პოსტი',
+    'რეაქცია',
+    'პროფილი',
+    'მესიჯი',
+    'ღონისძიება',
+    'ნოსტალგია',
+    'კონტენტი',  # YouTube
+    'ჩენელი',
+    'ქრიეთორი',
+    'ტუტორიალი',
+    'ვიდეო',
+    'ჩელენჯი',
+    'კომენტარები',
+    'სტრიმი',
+    'სწავლა',
+    'ალგორითმი',
+    'გართობა',  # Shared
+    'ამბები',
+    'დრო',
+    'რეალობა',
+    'ტყუილი',
+    'ინგეიჯმენთი',
+    'ფული',
+    'თვალთვალი',
+    'პოლიტიკა',
+    'ავთენტურობა',
+    'პეპელა',  # Unrelated
+    'მთები',
+    'სანთელი',
+    'ოკეანე',
+    'აგური',
+    'ბალიში',
+    'ვიოლინო',
+    'ცისარტყელა',
+    'წიგნი',
+    'ბურთი'
+]
+
+REPEATS_PER_WORD = 5
+
+WORDLIST = WORDLIST * REPEATS_PER_WORD
 
 # Max bounding box for logo primes (in window units, here 'pix'); aspect preserved within this box
 PRIME_IMAGE_MAX = (500, 300)  # (max_width, max_height)
