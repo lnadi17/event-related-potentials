@@ -109,6 +109,8 @@ WORDLIST = WORDLIST * REPEATS_PER_WORD
 # Max bounding box for logo primes (in window units, here 'pix'); aspect preserved within this box
 PRIME_IMAGE_MAX = (500, 300)  # (max_width, max_height)
 
+marker_count = 0  # For hard-limited marker count
+
 # -------------------- LSL --------------------
 #info = StreamInfo(name='PsychopyMarkerStream', type='Markers',
 #                  channel_count=1, channel_format='int32',
@@ -119,9 +121,13 @@ PRIME_IMAGE_MAX = (500, 300)  # (max_width, max_height)
 logging.console.setLevel(logging.INFO)
 
 def send_marker(win, value):
+    global marker_count
     """Send a marker value exactly on next flip."""
-#    win.callOnFlip(outlet.push_sample, [int(value)])
-    pass
+    if marker_count > len(WORDLIST):
+        # win.callOnFlip(outlet.push_sample, [int(value)])
+        marker_count += 1
+    else:
+        print("Not sending marker to avoid overflow.")
 
 def jitter_or_float(x):
     """Return a float from either a float or a (min,max) tuple."""
