@@ -22,10 +22,10 @@ from PIL import Image  # to read image native sizes for aspect-ratio preserving 
 # -------------------- Parameters (edit as needed) --------------------
 PRIME_TIME = 0.160            # seconds prime (logo) on-screen
 TARGET_TIME = 0.160           # seconds target word on-screen (visual persistence)
-ISI_INTERVAL = (0.700, 0.700) # seconds (min, max) between PRIME off and TARGET on
+ISI_INTERVAL = (0.540, 0.540) # seconds (min, max) between PRIME off and TARGET on
 
 RESPONSE_COOLDOWN = 0.000     # seconds after TARGET onset during which responses are IGNORED
-RESP_WINDOW = 1           # seconds accepted AFTER cooldown (float or tuple for jitter, e.g., (0.45, 0.55))
+RESP_WINDOW = 1.5           # seconds accepted AFTER cooldown (float or tuple for jitter, e.g., (0.45, 0.55))
 
 # Trials: by default use ALL combinations (len(WORDLIST) * len(BRAND_PATHS)).
 # Set N_TRIALS = None to use all; or an int to sample that many from the full factorial.
@@ -48,7 +48,7 @@ TARGET_STIM_ONSET_MARKER = 1
 RESP_KEY_MARKER = 2
 
 # Optional: small ITI after response/timeout (set to 0 to disable)
-ITI_SECONDS = 0.300
+ITI_SECONDS = 0.500
 
 # --------------- MEDIA (logos as image primes) ----------------
 MEDIA_DIR = os.path.join(BASE_DIR, "media")  # prefix for all logo paths
@@ -60,36 +60,26 @@ BRAND_PATHS = [
 ]
 
 WORDLIST = [
-    'კავშირი',  # Facebook
-    'მეგობრები',
-    'საზოგადოება',
-    'ჯგუფი',
-    'პოსტი',
-    'რეაქცია',
-    'პროფილი',
-    'მესიჯი',
-    'ღონისძიება',
-    'ნოსტალგია',
-    'კონტენტი',  # YouTube
-    'ჩენელი',
-    'ქრიეთორი',
-    'ტუტორიალი',
-    'ვიდეო',
-    'ჩელენჯი',
-    'კომენტარები',
-    'სტრიმი',
-    'სწავლა',
-    'ალგორითმი',
-    'გართობა',  # Shared
-    'ამბები',
-    'დრო',
-    'რეალობა',
-    'ტყუილი',
-    'ინგეიჯმენთი',
-    'ფული',
-    'თვალთვალი',
-    'პოლიტიკა',
-    'ავთენტურობა',
+    'ინსპირაცია',  # Instagram
+    'ფოტოები',
+    'ინფლუენსერი',
+    'მოგონებები',
+    'სთორი',
+    'გაზიარება',
+    'ესთეტიური',
+    'სელფი',
+    'მოგზაურობა',
+    'გართობა',
+    'ლურჯი',  # Linkedin
+    'პროფესიონალები',
+    'სამსახური',
+    'ინდუსტრია',
+    'ნეთვორქინგი',
+    'დასაქმება',
+    'უნარები',
+    'შესაძლებლობა',
+    'რეზიუმე',
+    'კარიერა',
     'პეპელა',  # Unrelated
     'მთები',
     'სანთელი',
@@ -102,7 +92,7 @@ WORDLIST = [
     'ბურთი'
 ]
 
-REPEATS_PER_WORD = 5
+REPEATS_PER_WORD = 4
 
 WORDLIST = WORDLIST * REPEATS_PER_WORD
 
@@ -320,6 +310,7 @@ def main():
                     rt_ms_from_target = (now - target_on) * 1000.0
                     rt_ms_from_window = (now - window_open) * 1000.0
                     # keep drawing until resp_deadline for consistent timing; change to 'break' to end early
+                    break
 
         # Optional ITI
         if ITI_SECONDS > 0:
