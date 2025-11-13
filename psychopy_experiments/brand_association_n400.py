@@ -14,7 +14,7 @@ Visual flow:
 
 from psychopy import visual, core, event, logging
 from psychopy.hardware import keyboard
-import random, os, csv
+import random, os, csv, math
 #from pylsl import StreamInfo, StreamOutlet
 from datetime import datetime
 from PIL import Image  # to read image native sizes for aspect-ratio preserving fit
@@ -25,11 +25,15 @@ TARGET_TIME = 0.160           # seconds target word on-screen (visual persistenc
 ISI_INTERVAL = (0.540, 0.540) # seconds (min, max) between PRIME off and TARGET on
 
 RESPONSE_COOLDOWN = 0.000     # seconds after TARGET onset during which responses are IGNORED
-RESP_WINDOW = 1.5           # seconds accepted AFTER cooldown (float or tuple for jitter, e.g., (0.45, 0.55))
+RESP_WINDOW = 1.5             # seconds accepted AFTER cooldown (float or tuple for jitter, e.g., (0.45, 0.55))
 
 # Trials: by default use ALL combinations (len(WORDLIST) * len(BRAND_PATHS)).
 # Set N_TRIALS = None to use all; or an int to sample that many from the full factorial.
 N_TRIALS = None
+
+# Block structure
+# If TRIALS_PER_BLOCK is None or 0 → single block (no rest screens).
+TRIALS_PER_BLOCK = 100
 
 FULLSCR = False
 WIN_SIZE = [1000, 700]
@@ -200,6 +204,17 @@ def main():
     fixation = visual.TextStim(win, text='+', height=40, color='black')
     question = visual.TextStim(win, text='?', height=60, color='black')
 
+    # Rest screen between blocks
+    rest_text = visual.TextStim(
+        win,
+        text='',
+        height=28,
+        color='black',
+        wrapWidth=900,
+        font=FONT_NAME,
+        alignText='center'
+    )
+
     # ---- Build trials (full factorial: each target x each brand) ----
     brand_paths = resolve_brand_paths(BRAND_PATHS)
     # Pre-compute fitted sizes for each logo to preserve AR and avoid repeated disk I/O
@@ -225,6 +240,14 @@ def main():
 
     if isinstance(N_TRIALS, int) and N_TRIALS > 0:
         full = random.sample(full, k=min(N_TRIALS, len(full)))
+
+    total_trials = len(full)
+    if TRIALS_PER_BLOCK and TRIALS_PER_BLOCK > 0:
+        trials_per_block = min(TRIALS_PER_BLOCK, total_trials)
+        n_blocks = int(math.ceil(total_trials / float(trials_per_block)))
+    else:
+        trials_per_block = None
+        n_blocks = 1
 
     # ---- Instructions ----
     instr.draw(); win.flip()
@@ -330,6 +353,30 @@ def main():
                 round(rt_ms_from_target, 2) if rt_ms_from_target is not None else '',
                 round(rt_ms_from_window, 2) if rt_ms_from_window is not None else ''
             ])
+
+        # ---- Block rest screen ----
+        trials_done = t_idx + 1
+        if trials_per_block and (trials_done % trials_per_block == 0) and (trials_done < total_trials):
+            current_block = trials_done // trials_per_block
+            rest_text.text = (
+                f"You can rest here.\n\n"
+                f"You can move around and blink now.\n\n"
+                f"{trials_done} trials done out of {total_trials}.\n"
+                f"Block {current_block} of {n_blocks} completed.\n\n"
+                f"Press SPACE to continue."
+            )
+            kb.clearEvents(); event.clearEvents()
+            while True:
+                rest_text.draw()
+                win.flip()
+                keys = kb.getKeys(keyList=['space', 'escape'], waitRelease=False)
+                if keys:
+                    if any(k.name == 'escape' for k in keys):
+                        win.close(); core.quit()
+                    if any(k.name == 'space' for k in keys):
+                        kb.clearEvents(); event.clearEvents()
+                        break
+                core.wait(0.01)
 
     # ---- End screen ----
     end = visual.TextStim(
