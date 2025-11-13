@@ -55,8 +55,8 @@ MEDIA_DIR = os.path.join(BASE_DIR, "media")  # prefix for all logo paths
 
 # Provide relative paths from MEDIA_DIR or absolute/BASE_DIR-relative paths.
 BRAND_PATHS = [
-    "media/logos/facebook.png",
-    "media/logos/youtube.png",
+    "media/logos/instagram.png",
+    "media/logos/linkedin.png",
 ]
 
 WORDLIST = [
