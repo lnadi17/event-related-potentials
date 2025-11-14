@@ -5,9 +5,10 @@ Prime (logo) → ISI → Target (word, green). Respond RELATED (→) vs UNRELATE
 Response keys are accepted only AFTER a cooldown following TARGET onset.
 Per-trial CSV with timing, keys, and RTs.
 """
-from typing import Any
+USE_LSL = False  # Set to False to disable LSL markers
 
-# from pylsl import StreamInfo, StreamOutlet
+if USE_LSL:
+    from pylsl import StreamInfo, StreamOutlet
 from psychopy import visual, core, event, logging
 from psychopy.hardware import keyboard
 import random, os, csv, math
@@ -53,19 +54,19 @@ OUT_CSV = os.path.join(BASE_DIR, f"logo_word_{datetime.now().strftime('%Y%m%d_%H
 MEDIA_DIR = os.path.join(BASE_DIR, "media")  # Prefix for all logo paths
 # Provide relative paths from MEDIA_DIR or absolute/BASE_DIR-relative paths.
 BRAND_PATHS = [
-    "media/logos/instagram.png",
-    "media/logos/linkedin.png",
+    "logos/instagram.png",
+    "logos/linkedin.png",
 ]
 
 ## Prepare wordlist
 REPEATS_PER_WORD = 4  # How many times to repeat each word during the experiment
-WORDLIST = WORDLIST * REPEATS_PER_WORD  # Expand wordlist
 
 ## LSL streaming
-info = StreamInfo(name='PsychopyMarkerStream', type='Markers',
-                  channel_count=1, channel_format='int32',
-                  source_id='logo_word_n400')
-outlet = StreamOutlet(info)
+if USE_LSL:
+    info = StreamInfo(name='PsychopyMarkerStream', type='Markers',
+                      channel_count=1, channel_format='int32',
+                      source_id='logo_word_n400')
+    outlet = StreamOutlet(info)
 
 ## Utilities
 logging.console.setLevel(logging.INFO)
@@ -73,7 +74,8 @@ logging.console.setLevel(logging.INFO)
 
 def send_marker(win, value):
     """Send a marker value exactly on next flip."""
-    win.callOnFlip(outlet.push_sample, [int(value)])
+    if USE_LSL:
+        win.callOnFlip(outlet.push_sample, [int(value)])
 
 
 def resolve_brand_paths(paths):
@@ -224,7 +226,7 @@ def main():
                     resp_key = k
                     rt_ms_from_target = elapsed * 1000
                     # NOTE: Keep drawing until resp_deadline for consistent timing; change to 'break' to end early
-                    break
+                    # break
 
         # Optional ITI
         if ITI_SECONDS > 0:
@@ -295,6 +297,7 @@ def main():
 def build_trials() -> tuple[list[dict], int, int, int]:
     brand_paths = resolve_brand_paths(BRAND_PATHS)
     targets = [word for category in WORDLIST.values() for word in category]
+    targets = targets * REPEATS_PER_WORD  # Repeat each word as specified
     full = []
     for tgt in targets:
         for bpath in brand_paths:
