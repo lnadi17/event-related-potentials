@@ -29,7 +29,7 @@ ITI_SECONDS = 0.500  # seconds after response/timeout to the next trial (set to 
 # Set N_TRIALS = None to use all; or an int to sample that many from the full factorial
 N_TRIALS = None
 # If TRIALS_PER_BLOCK is None or 0 → single block (no rest screens)
-TRIALS_PER_BLOCK = 100
+TRIALS_PER_BLOCK = 80
 
 ## Display settings
 FULLSCR = False
