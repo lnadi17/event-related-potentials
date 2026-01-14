@@ -30,19 +30,19 @@ from datetime import datetime
 # =============================================================================
 # TIMING PARAMETERS (in seconds)
 # =============================================================================
-FIXATION_TIME = 1.000          # 1000 ms fixation cross
-BUNDLE_PREVIEW_TIME = 2.000    # 2000 ms bundle presentation (no price)
+FIXATION_TIME = 0.000          # 1000 ms fixation cross
+BUNDLE_PREVIEW_TIME = 0.000    # 2000 ms bundle presentation (no price)
 EMPTY_SCREEN_INTERVAL = (0.400, 0.600)  # 400–600 ms empty screen (randomized)
-PRICE_RESPONSE_TIME = 4.000    # 4000 ms bundle with price (response window)
+PRICE_RESPONSE_TIME = 1.000    # 4000 ms bundle with price (response window)
 # Note: Only responses within 4s are valid for behavioral analyses
 
 # =============================================================================
 # TRIAL & BLOCK STRUCTURE
 # =============================================================================
-N_BUNDLES = 45                 # 45 complementary bundles
-PRICE_CONDITIONS = ['NP', 'LP', 'ZP']  # Normal, Low, Zero price conditions
+N_BUNDLES = 40                 # 45 complementary bundles
+PRICE_CONDITIONS = ['NP']  # Normal, Low, Zero price conditions
 N_TRIALS_TOTAL = N_BUNDLES * len(PRICE_CONDITIONS)  # 135 trials
-TRIALS_PER_BLOCK = 45          # 3 blocks of 45 trials each
+TRIALS_PER_BLOCK = 40          # 3 blocks of 45 trials each
 N_BLOCKS = 3
 
 # =============================================================================
@@ -63,21 +63,23 @@ PENALTY_THRESHOLDS = [
 # =============================================================================
 # DISPLAY SETTINGS
 # =============================================================================
-FULLSCR = False
+FULLSCR = True
 WIN_SIZE = [1280, 800]
 BG_COLOR = [0.7, 0.7, 0.7]     # Gray background
 FONT_NAME = 'DejaVu Sans'
 TITLE = "Bundle Pricing Study"
 PRICE_COLOR = 'red'            # All prices in red
 
-# Product display positions (focal left of center, tie-in right)
-FOCAL_POS = (-280, 60)         # Focal product position (left of fixation)
-TIEIN_POS = (280, 60)          # Tie-in product position (right of fixation)
-PRICE_FOCAL_POS = (-280, -120)
-PRICE_TIEIN_POS = (280, -120)
+# Product display positions
+# Fixed distances from center (fixation cross) to image edges
+FOCAL_RIGHT_EDGE_X = -50       # Right edge of left (focal) image distance from center
+TIEIN_LEFT_EDGE_X = 50         # Left edge of right (tiein) image distance from center
+IMAGE_CENTER_Y = 60             # Vertical center for images
+PRICE_OFFSET_BELOW_IMAGE = 30   # Pixels below image bottom for price display
+PRICE_TEXT_HEIGHT = 36          # Price text size (larger than before)
 
 # Image settings
-IMAGE_MAX_SIZE = (300, 240)    # Max bounding box for product images (w, h)
+IMAGE_MAX_SIZE = (600, 480)    # Max bounding box for product images (w, h)
 
 # =============================================================================
 # RESPONSE KEYS (counterbalanced)
@@ -143,51 +145,46 @@ BUNDLES_DIR = os.path.join(MEDIA_DIR, "bundles")
 
 BUNDLES = [
     # Format: (id, focal_name, tiein_name, focal_base_price, tiein_base_price)
-    (1, "Smartphone", "Phone Case", 25.0, 5.0),
-    (2, "Laptop", "Laptop Bag", 40.0, 8.0),
-    (3, "Camera", "Memory Card", 30.0, 6.0),
-    (4, "Headphones", "Carrying Pouch", 20.0, 4.0),
-    (5, "Tablet", "Screen Protector", 35.0, 5.0),
-    (6, "Gaming Console", "Extra Controller", 45.0, 10.0),
-    (7, "Smart Watch", "Watch Band", 22.0, 4.0),
-    (8, "Bluetooth Speaker", "Charging Cable", 18.0, 3.0),
-    (9, "E-Reader", "Book Light", 15.0, 3.0),
-    (10, "Fitness Tracker", "Replacement Strap", 12.0, 2.0),
-    (11, "Wireless Earbuds", "Ear Tips Set", 16.0, 2.0),
-    (12, "Portable Charger", "USB Cable", 14.0, 2.0),
-    (13, "Action Camera", "Mounting Kit", 28.0, 6.0),
-    (14, "Drone", "Extra Battery", 50.0, 12.0),
-    (15, "VR Headset", "Controller Grips", 38.0, 8.0),
-    (16, "Electric Toothbrush", "Brush Heads", 10.0, 3.0),
-    (17, "Hair Dryer", "Diffuser Attachment", 12.0, 3.0),
-    (18, "Coffee Maker", "Coffee Filters", 20.0, 4.0),
-    (19, "Blender", "Extra Blades", 18.0, 4.0),
-    (20, "Vacuum Cleaner", "Dust Bags", 35.0, 5.0),
-    (21, "Iron", "Ironing Board Cover", 15.0, 3.0),
-    (22, "Microwave", "Microwave Cover", 25.0, 4.0),
-    (23, "Toaster", "Bread Box", 12.0, 3.0),
-    (24, "Electric Kettle", "Tea Infuser", 10.0, 2.0),
-    (25, "Rice Cooker", "Measuring Cup Set", 18.0, 2.0),
-    (26, "Air Purifier", "Replacement Filter", 30.0, 8.0),
-    (27, "Humidifier", "Essential Oils", 22.0, 5.0),
-    (28, "Space Heater", "Timer Outlet", 28.0, 5.0),
-    (29, "Fan", "Remote Control", 20.0, 3.0),
-    (30, "Lamp", "Smart Bulb", 15.0, 4.0),
-    (31, "Desk Chair", "Lumbar Cushion", 40.0, 6.0),
-    (32, "Monitor", "Monitor Stand", 35.0, 8.0),
-    (33, "Keyboard", "Wrist Rest", 18.0, 4.0),
-    (34, "Mouse", "Mouse Pad", 12.0, 2.0),
-    (35, "Webcam", "Ring Light", 20.0, 5.0),
-    (36, "Microphone", "Pop Filter", 25.0, 4.0),
-    (37, "Drawing Tablet", "Stylus Nibs", 30.0, 3.0),
-    (38, "Printer", "Ink Cartridge", 28.0, 8.0),
-    (39, "Scanner", "Document Tray", 22.0, 4.0),
-    (40, "External SSD", "Carrying Case", 25.0, 3.0),
-    (41, "USB Hub", "Cable Organizer", 10.0, 2.0),
-    (42, "Router", "Ethernet Cable", 20.0, 3.0),
-    (43, "Smart Plug", "Extension Cord", 8.0, 3.0),
-    (44, "Security Camera", "SD Card", 28.0, 4.0),
-    (45, "Doorbell Camera", "Chime Unit", 25.0, 5.0),
+    (1, "Wireless Mouse (Dell WM126 Black)", "Gembird mouse Pad Black", 51.12, 3.0),
+    (2, "2E Membrane keyboard KG350 Gaming", "Keyboard Cover", 55.0, 15.0),
+    (3, "Hoco J87 Tacker PD20W+QC3.0 Power Bank (10000mAh) Black", "Hoco X86 Micro Spear silicone charging data cable Black", 49.0, 9.0),
+    (4, "Proove Wireless Earphones Mainstream TWS white", "BLACK CASE FOR AIRPODS 3", 58.0, 12.0),
+    (5, "Webcam (HD camera mini packing)", "RK-12 LED Light", 43.0, 16.0),
+    (6, "Vention TGKBD Type-C to 4-Port", "Ugreen USB-C to USB-C PD Fast Charging Cable", 49.0, 19.0),
+    (7, "Electric Kettle (ADLER AD1224)", "Tea Cup with Filter", 45.0, 7.59),
+    (8, "Electric Stove (ARNICA ID 77610)", "Pan (HASCEVHER PICCOLO ID 100424)", 38.0, 14.2),
+    (9, "Rice (N1 Long Grain 900g)", "Spices (Black Pepper)", 4.29, 1.25),
+    (10, "Olive Oil (Extra Virgin 0.5L)", "Salad Bowl", 25.0, 4.0),
+    (11, "Bacon", "Eggs", 11.25, 4.75),
+    (12, "Pesto", "Pasta Barilla (Fussili)", 23.4, 5.95),
+    (13, "Cavear", "Butter (President)", 49.95, 9.95),
+    (14, "Sausage (780g)", "Mustard", 14.5, 1.75),
+    (15, "Nuts (Peanuts 120g)", "Dried Fruits", 11.95, 4.5),
+    (16, "Chocolate Set (90g)", "Coffee", 16.95, 4.8),
+    (17, "Jackobs", "Coffee mug", 35.0, 17.68),
+    (18, "Red Wine 'Gonadze' Khvanchkara (Semi-Sweet) 0.75L", "Wine Bottle Opener OEM TM39002", 39.95, 14.0),
+    (19, "Whiskey (0.75L)", "Leonardo Swing Whisky Glass", 59.9, 9.5),
+    (20, "Arak (Georgian Brandy)", "Energy Drink Red Bull (250ml)", 50.0, 5.95),
+    (21, "Tea Box", "Greenfield Tea", 39.9, 4.95),
+    (22, "Beer", "Peanuts", 14.0, 3.2),
+    (23, "Toilet Paper (Selpak 32pcs)", "Wet Wipes", 32.5, 6.8),
+    (24, "Fito - Nourishment Shampoo for Dry Hair Sulfate-Free 250ml", "Fito - Nourishment Conditioner for Dry Hair 175ml", 30.95, 24.95),
+    (25, "Liquid Soap Dispenser", "Liquid Soap", 49.2, 6.5),
+    (26, "Razor", "Shaving Foam", 59.9, 9.95),
+    (27, "Nail Care Set", "Tweezers", 62.89, 5.95),
+    (28, "Coconut Body Lotion", "Soap", 45.0, 19.0),
+    (29, "Electric Toothbrush Bicofident", "Toothpaste (LACALUT 75ml)", 43.5, 10.56),
+    (30, "Floor Cleaning Mop", "Mop Replacement Head", 62.0, 7.4),
+    (31, "Designworks Ink - Notebook Twin Wire", "Pen", 49.99, 3),
+    (32, "Sapiens", "Bookmark", 24.9, 3.0),
+    (33, "Board", "Markers", 49.0, 4.75),
+    (34, "Cutting Board", "Knife", 44.9, 19.0),
+    (35, "Candlestick", "Candle", 39.9, 8.0),
+    (36, "Lunch container", "Lunch Bag", 44.0, 15.0),
+    (37, "FAIRY Dishwashing Liquid Lemon 1.5L", "Dishwashing Sponge VILEDA", 11.55, 2.25),
+    (38, "Table Lamp", "Light Bulb", 57.0, 12.0),
+    (39, "Hascevher 28cm Granite Pan without Lid", "Drevotvar 29.5cm Wooden Spoon", 34.0, 5.3),
+    (40, "Flashlight", "Battery", 67.0, 5),
 ]
 
 # Ensure we have exactly N_BUNDLES
@@ -569,14 +566,15 @@ def main():
     fixation = visual.TextStim(win, text='+', height=60, color='black', font=FONT_NAME)
     
     # Image stimuli for products (will be updated per trial)
-    focal_img_stim = visual.ImageStim(win, image=None, pos=FOCAL_POS, size=None)
-    tiein_img_stim = visual.ImageStim(win, image=None, pos=TIEIN_POS, size=None)
+    # Positions will be calculated dynamically based on image sizes
+    focal_img_stim = visual.ImageStim(win, image=None, pos=(0, IMAGE_CENTER_Y), size=None, anchor='right')
+    tiein_img_stim = visual.ImageStim(win, image=None, pos=(0, IMAGE_CENTER_Y), size=None, anchor='left')
     
-    # Price text stimuli - all in red
-    focal_price_text = visual.TextStim(win, text='', height=28, color=PRICE_COLOR,
-                                        pos=PRICE_FOCAL_POS, font=FONT_NAME, bold=True)
-    tiein_price_text = visual.TextStim(win, text='', height=28, color=PRICE_COLOR,
-                                        pos=PRICE_TIEIN_POS, font=FONT_NAME, bold=True)
+    # Price text stimuli - all in red (positions will be calculated dynamically)
+    focal_price_text = visual.TextStim(win, text='', height=PRICE_TEXT_HEIGHT, color=PRICE_COLOR,
+                                        pos=(0, 0), font=FONT_NAME, bold=True)
+    tiein_price_text = visual.TextStim(win, text='', height=PRICE_TEXT_HEIGHT, color=PRICE_COLOR,
+                                        pos=(0, 0), font=FONT_NAME, bold=True)
     # Total price display removed per design requirement
     
     # Instructions screen
@@ -677,10 +675,42 @@ def main():
         # =====================================================================
         # Load images for this trial
         focal_img_stim.image = trial['focal_img_path']
-        focal_img_stim.size = fitted_size_for_image(trial['focal_img_path'], IMAGE_MAX_SIZE)
+        focal_size = fitted_size_for_image(trial['focal_img_path'], IMAGE_MAX_SIZE)
+        focal_img_stim.size = focal_size
         
         tiein_img_stim.image = trial['tiein_img_path']
-        tiein_img_stim.size = fitted_size_for_image(trial['tiein_img_path'], IMAGE_MAX_SIZE)
+        tiein_size = fitted_size_for_image(trial['tiein_img_path'], IMAGE_MAX_SIZE)
+        tiein_img_stim.size = tiein_size
+        
+        # Calculate positions: focal image right edge at FOCAL_RIGHT_EDGE_X, tiein image left edge at TIEIN_LEFT_EDGE_X
+        # For anchor='right', pos.x is the right edge position
+        # For anchor='left', pos.x is the left edge position
+        focal_img_stim.pos = (FOCAL_RIGHT_EDGE_X, IMAGE_CENTER_Y)
+        tiein_img_stim.pos = (TIEIN_LEFT_EDGE_X, IMAGE_CENTER_Y)
+        
+        # Calculate price positions: below the lowest image bottom
+        # Image bottom = center_y - height/2 (in pixels, but PsychoPy uses normalized units)
+        # We need to convert pixel sizes to normalized units
+        # Assuming win.size gives window size in pixels
+        win_w, win_h = win.size
+        focal_h_pixels = focal_size[1]
+        tiein_h_pixels = tiein_size[1]
+        
+        # Convert pixel heights to normalized units (PsychoPy uses height units by default)
+        # For 'pix' units, we can use pixel values directly
+        focal_bottom_y = IMAGE_CENTER_Y - (focal_h_pixels / 2.0)
+        tiein_bottom_y = IMAGE_CENTER_Y - (tiein_h_pixels / 2.0)
+        lowest_bottom_y = min(focal_bottom_y, tiein_bottom_y)
+        
+        # Price Y position: lowest image bottom - offset
+        price_y = lowest_bottom_y - PRICE_OFFSET_BELOW_IMAGE
+        
+        # Price X positions: aligned with image centers
+        focal_center_x = FOCAL_RIGHT_EDGE_X - (focal_size[0] / 2.0)
+        tiein_center_x = TIEIN_LEFT_EDGE_X + (tiein_size[0] / 2.0)
+        
+        focal_price_text.pos = (focal_center_x, price_y)
+        tiein_price_text.pos = (tiein_center_x, price_y)
         
         send_marker(win, MARKER_BUNDLE_PREVIEW)
         preview_onset = core.getTime()
@@ -708,6 +738,7 @@ def main():
         # PHASE 4: Bundle with Prices - Response Window (4000 ms)
         # =====================================================================
         # Set price texts - all in red
+        # (Positions already calculated in PHASE 2 based on image sizes)
         focal_price_text.text = format_price(trial['focal_price'])
         tiein_price_text.text = format_price(trial['tiein_price'])
         # Total price not displayed (only individual product prices shown)
