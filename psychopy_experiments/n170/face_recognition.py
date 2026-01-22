@@ -26,7 +26,7 @@ KEY_INTACT = 'right'         # RIGHT arrow = intact (faces, cars)
 KEY_SCRAMBLED = 'left'       # LEFT arrow  = scrambled (scrambled faces/cars)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MEDIA_DIR = os.path.join(BASE_DIR, 'media', 'N170')
+MEDIA_DIR = os.path.join(BASE_DIR, 'media')
 OUT_CSV = os.path.join(BASE_DIR, f"n170_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
 
 # Event codes (ERP CORE)
